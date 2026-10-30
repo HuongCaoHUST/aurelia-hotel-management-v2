@@ -1,0 +1,23 @@
+services:
+  customer:
+    build:
+      context: ./frontend-customer
+      args:
+        VITE_BASE_PATH: /
+
+  staff:
+    build:
+      context: .
+      dockerfile: ./frontend-staff/Dockerfile
+      args:
+        VITE_BASE_PATH: /staff/
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - customer
+      - staff
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

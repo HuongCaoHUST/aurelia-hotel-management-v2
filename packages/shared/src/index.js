@@ -1,0 +1,49 @@
+export function createWebStorage() {
+  return {
+    getAccessToken: () => localStorage.getItem('accessToken'),
+    setAccessToken: (token) => localStorage.setItem('accessToken', token),
+    clear: () => localStorage.removeItem('accessToken'),
+  };
+}
+
+export function createHttpClient({ baseUrl = '', getAccessToken } = {}) {
+  const request = async (path, options = {}) => {
+    const token = getAccessToken?.();
+    const response = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    return response.status === 204 ? null : response.json();
+  };
+
+  return {
+    get: (path) => request(path),
+    post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
+    put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (path) => request(path, { method: 'DELETE' }),
+  };
+}
+
+export function createAuthApi(http) {
+  return {
+    login: (data) => http.post('/auth/login', data),
+    me: () => http.get('/auth/me'),
+  };
+}
+
+export function createAuthService({ api, storage }) {
+  return {
+    login: async (data) => {
+      const result = await api.login(data);
+      if (result?.accessToken) storage.setAccessToken(result.accessToken);
+      return result;
+    },
+    currentUser: () => api.me(),
+    logout: () => storage.clear(),
+  };
+}
