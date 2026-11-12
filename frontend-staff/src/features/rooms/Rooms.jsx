@@ -34,6 +34,17 @@ export function Rooms({ onNotice }) {
     loadRooms();
   }, []);
 
+  useEffect(() => {
+    if (!isFormOpen && !selectedRoom) return undefined;
+    function handleKeyDown(event) {
+      if (event.key !== 'Escape') return;
+      if (selectedRoom) setSelectedRoom(null);
+      else setFormOpen(false);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFormOpen, selectedRoom]);
+
   const groups = useMemo(() => {
     const grouped = roomTypes.map((roomType) => ({
       id: roomType.id,
@@ -64,7 +75,7 @@ export function Rooms({ onNotice }) {
       <div>
         <h1>Room management</h1>
       </div>
-      <button className="primary-button" type="button" onClick={() => setFormOpen(true)}>+ Add room</button>
+      <button className="primary-button" type="button" onClick={() => setFormOpen(true)}><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg> Add room</button>
     </div>
 
     {loading ? <p className="rooms-empty">Loading rooms…</p> : groups.length ? <div className="room-groups">
@@ -132,7 +143,7 @@ function RoomDetailsModal({ room, onClose }) {
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div className="room-details-modal" role="dialog" aria-modal="true" aria-labelledby="room-details-title">
-      <div className="modal-heading"><div><p className="eyebrow">Room details</p><h2 id="room-details-title">Room {room.roomNumber}</h2><p>{room.roomTypeName}</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="modal-heading"><div><p className="eyebrow">Room details</p><h2 id="room-details-title">Room {room.roomNumber}</h2><p>{room.roomTypeName}</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m6 6 12 12M18 6 6 18" /></svg></button></div>
       <div className="room-details-content">
         <div className="room-details-album">
           <div className="room-details-main">
@@ -158,7 +169,7 @@ function RoomDetailsModal({ room, onClose }) {
 function RoomModal({ roomTypes, onClose, onSubmit }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
-      <div className="modal-heading"><div><p className="eyebrow">Room inventory</p><h2 id="room-modal-title">Add room</h2><p>Add a room number, room type and room images.</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="modal-heading"><div><p className="eyebrow">Room inventory</p><h2 id="room-modal-title">Add room</h2><p>Add a room number, room type and room images.</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m6 6 12 12M18 6 6 18" /></svg></button></div>
       {!roomTypes.length ? <div className="room-modal-empty"><p>Create a room type before adding a room.</p><button className="secondary-button" type="button" onClick={onClose}>Close</button></div> : <form className="account-form" onSubmit={onSubmit}>
         <div className="form-row"><label>Room number<input name="roomNumber" placeholder="101" maxLength="20" required /></label><label>Floor<input name="floor" type="number" min="0" step="1" placeholder="1" required /></label></div>
         <label>Room type<select name="roomTypeId" defaultValue="" required><option value="" disabled>Select room type</option>{roomTypes.map((roomType) => <option value={roomType.id} key={roomType.id}>{roomType.name}</option>)}</select></label>

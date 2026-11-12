@@ -109,7 +109,6 @@ export function StaffStage({ user, onLogout }) {
   const [statusFilter, setStatusFilter] = useState('All status');
   const [sortOrder, setSortOrder] = useState('newest');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
   const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Staff member';
@@ -123,6 +122,15 @@ export function StaffStage({ user, onLogout }) {
       .then((members) => setStaff(members.map(toStaffMember)))
       .catch((error) => showNotice(error.message || 'Unable to load staff accounts.', 'error'));
   }, [canManageStaffAccounts]);
+
+  useEffect(() => {
+    if (!modal) return undefined;
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') setModal(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modal]);
 
   const filteredStaff = useMemo(() => {
     const query = search.toLowerCase();
@@ -219,7 +227,7 @@ export function StaffStage({ user, onLogout }) {
       </aside>
 
       <main className="admin-main">
-        <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : activeTab === 'room-list' ? 'Rooms' : activeTab === 'rooms' ? 'Room type' : accountSection === 'permissions' ? 'Permissions' : accountSection === 'audit' ? 'Access log' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-expanded={isProfileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>⌄</button>{isProfileMenuOpen && <div className="profile-menu"><button type="button" onClick={() => { setProfileMenuOpen(false); onLogout(); }}>Đăng xuất</button></div>}</div></div></header>
+        <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : activeTab === 'room-list' ? 'Rooms' : activeTab === 'rooms' ? 'Room type' : accountSection === 'permissions' ? 'Permissions' : accountSection === 'audit' ? 'Access log' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-haspopup="menu">⌄</button><div className="profile-menu" role="menu"><button type="button" onClick={onLogout}>Đăng xuất</button></div></div></div></header>
         <div className="admin-content">{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'room-list' && canManageRooms ? <Rooms onNotice={showNotice} /> : activeTab === 'rooms' && canManageRooms ? <RoomTypes onNotice={showNotice} /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : activeTab === 'accounts' && accountSection === 'permissions' && canManageStaffAccounts ? <Permissions onNotice={(message, type) => showNotice(message, type)} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sortOrder={sortOrder} setSortOrder={sortOrder} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={toggleStatus} />}</div>
       </main>
       {modal && <AccountModal mode={modal.type} member={modal.member} onClose={() => setModal(null)} onSubmit={modal.type === 'edit' ? updateMember : handleCreateAccount} />}

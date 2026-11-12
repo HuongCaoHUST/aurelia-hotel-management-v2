@@ -96,6 +96,17 @@ export function Permissions({ user, onNotice }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!roleModal && !deleteConfirmRole) return undefined;
+    function handleKeyDown(event) {
+      if (event.key !== 'Escape' || deletingRoleId) return;
+      if (deleteConfirmRole) setDeleteConfirmRole(null);
+      else setRoleModal(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [roleModal, deleteConfirmRole, deletingRoleId]);
+
+  useEffect(() => {
     if (user) {
       setResolvedUser(user);
       return undefined;

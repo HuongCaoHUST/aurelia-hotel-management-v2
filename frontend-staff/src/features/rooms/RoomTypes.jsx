@@ -30,6 +30,15 @@ export function RoomTypes({ onNotice }) {
     loadRoomTypes();
   }, []);
 
+  useEffect(() => {
+    if (!form) return undefined;
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') setForm(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [form]);
+
   async function createRoomType(event) {
     event.preventDefault();
     try {
@@ -57,7 +66,7 @@ export function RoomTypes({ onNotice }) {
       <div>
         <h1>Room type management</h1>
       </div>
-      <button className="primary-button" type="button" onClick={() => setForm({ ...emptyRoomType })}>+ Add room type</button>
+      <button className="primary-button" type="button" onClick={() => setForm({ ...emptyRoomType })}><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg> Add room type</button>
     </div>
 
     <section className="panel room-types-panel">
@@ -94,7 +103,7 @@ function formatCurrency(value) {
 function RoomTypeModal({ value, onChange, onClose, onSubmit }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="room-type-modal-title">
-      <div className="modal-heading"><div><p className="eyebrow">Room inventory</p><h2 id="room-type-modal-title">{value.id ? 'Edit room type' : 'Add room type'}</h2><p>Enter the basic information for this room type.</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="modal-heading"><div><p className="eyebrow">Room inventory</p><h2 id="room-type-modal-title">{value.id ? 'Edit room type' : 'Add room type'}</h2><p>Enter the basic information for this room type.</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m6 6 12 12M18 6 6 18" /></svg></button></div>
       <form className="account-form" onSubmit={onSubmit}>
         <label>Room type name<input value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} placeholder="Deluxe room" maxLength="120" required /></label>
         <label>Description<textarea value={value.description} onChange={(event) => onChange({ ...value, description: event.target.value })} placeholder="Short room type description" maxLength="1500" /></label>
