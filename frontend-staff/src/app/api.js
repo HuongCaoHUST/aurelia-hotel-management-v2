@@ -23,6 +23,7 @@ export const staffApi = {
 export const roomTypeApi = {
   list: () => http.get('/room-types'),
   create: (data) => http.post('/room-types', data),
+  update: (id, data) => http.put(`/room-types/${id}`, data),
 };
 export const roomApi = {
   list: () => http.get('/rooms'),

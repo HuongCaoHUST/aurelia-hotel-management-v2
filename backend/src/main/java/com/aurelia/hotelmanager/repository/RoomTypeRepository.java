@@ -13,4 +13,6 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long>, JpaSp
     Optional<RoomType> findByName(String name);
 
     boolean existsByName(String name);
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }

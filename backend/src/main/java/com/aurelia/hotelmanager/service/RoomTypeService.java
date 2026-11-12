@@ -51,6 +51,26 @@ public class RoomTypeService {
         return toResponse(roomTypeRepository.save(roomType));
     }
 
+    @Transactional
+    public RoomTypeResponse update(Long id, RoomTypeRequest request) {
+        RoomType roomType = roomTypeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Room type not found"));
+        String name = normalizeName(request.getName());
+        if (roomTypeRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Room type name already exists");
+        }
+
+        roomType.setName(name);
+        roomType.setDescription(normalizeOptional(request.getDescription()));
+        roomType.setBasePrice(request.getBasePrice());
+        roomType.setMaxOccupancy(request.getMaxOccupancy());
+        roomType.setSizeInSquareMeters(request.getSizeInSquareMeters());
+        roomType.setBedType(normalizeOptional(request.getBedType()));
+        return toResponse(roomTypeRepository.save(roomType));
+    }
+
     private RoomTypeResponse toResponse(RoomType roomType) {
         return new RoomTypeResponse(
                 roomType.getId(),
