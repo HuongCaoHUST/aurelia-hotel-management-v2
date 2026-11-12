@@ -2,6 +2,7 @@ package com.aurelia.hotelmanager.controller;
 
 import com.aurelia.hotelmanager.config.JwtService;
 import com.aurelia.hotelmanager.dto.request.LoginRequest;
+import com.aurelia.hotelmanager.dto.response.CurrentUserResponse;
 import com.aurelia.hotelmanager.dto.response.LoginResponse;
 import com.aurelia.hotelmanager.model.User;
 import com.aurelia.hotelmanager.repository.UserRepository;
@@ -9,6 +10,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,6 +51,29 @@ public class AuthController {
         return new LoginResponse(
                 jwtService.generateToken(user),
                 fullName,
+                roles,
+                permissions);
+    }
+
+    @GetMapping("/me")
+    public CurrentUserResponse currentUser(@AuthenticationPrincipal UserDetails principal) {
+        User user = userRepository.findByEmail(principal.getUsername())
+                .orElseThrow();
+
+        Set<String> roles = user.getRoles().stream()
+                .map(role -> role.getName())
+                .collect(Collectors.toSet());
+        Set<String> permissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(permission -> permission.getCode())
+                .collect(Collectors.toSet());
+
+        return new CurrentUserResponse(
+                user.getId(),
+                user.getFirstName() + " " + user.getLastName(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
                 roles,
                 permissions);
     }

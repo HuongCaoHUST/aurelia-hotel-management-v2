@@ -44,6 +44,15 @@ public class User extends BaseEntity {
     @Column(length = 30)
     private String phone;
 
+    @Column(length = 80)
+    private String department;
+
+    @Column(length = 255)
+    private String avatarObjectKey;
+
+    @Column(length = 80)
+    private String avatarContentType;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

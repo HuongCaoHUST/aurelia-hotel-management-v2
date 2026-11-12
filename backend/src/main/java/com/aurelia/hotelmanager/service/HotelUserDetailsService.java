@@ -34,7 +34,7 @@ public class HotelUserDetailsService implements UserDetailsService {
                 .withUsername(user.getEmail())
                 .password(user.getPassword())
                 .authorities(authorities)
-                .disabled(user.getStatus() == com.aurelia.hotelmanager.model.AccountStatus.INACTIVE)
+                .disabled(user.getStatus() != com.aurelia.hotelmanager.model.AccountStatus.ACTIVE)
                 .accountLocked(user.getStatus() == com.aurelia.hotelmanager.model.AccountStatus.SUSPENDED)
                 .build();
     }

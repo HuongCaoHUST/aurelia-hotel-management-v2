@@ -2,6 +2,7 @@ export const staffPermissions = {
   viewDashboard: 'DASHBOARD_VIEW',
   manageStaffAccounts: 'ROLE_MANAGE_ROLES',
   manageAmenities: 'ROLE_MANAGE_ROLES',
+  manageRooms: 'ROLE_MANAGE_ROLES',
 };
 
 export function getRoleNames(user) {

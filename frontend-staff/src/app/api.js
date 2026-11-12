@@ -16,8 +16,9 @@ export const authApi = createAuthApi(http);
 export const authService = createAuthService({ api: authApi, storage });
 export const staffApi = {
   list: () => http.get('/auth/staff'),
-  invite: (data) => http.post('/auth/staff/invite', data),
+  create: (data) => http.post('/auth/staff', data),
   update: (id, data) => http.put(`/auth/staff/${id}`, data),
+  avatar: (id) => http.getBlob(`/auth/staff/${id}/avatar`),
 };
 export const amenityApi = {
   groups: () => http.get('/amenities/groups'),

@@ -7,6 +7,7 @@ import { Amenities } from '../amenities/Amenities.jsx';
 const navItems = [
   { id: 'dashboard', label: 'Overview', icon: 'grid', permission: staffPermissions.viewDashboard },
   { id: 'accounts', label: 'Staff accounts', icon: 'users', permission: staffPermissions.manageStaffAccounts },
+  { id: 'rooms', label: 'Room management', icon: 'bed', permission: staffPermissions.manageRooms },
   { id: 'amenities', label: 'Amenities', icon: 'sparkle', permission: staffPermissions.manageAmenities },
 ];
 
@@ -27,7 +28,7 @@ const activities = [
   { icon: 'check', title: 'Reservation confirmed', detail: 'Room 304 · James Wilson', time: '10 min ago', tone: 'teal' },
   { icon: 'bell', title: 'Housekeeping request', detail: 'Room 218 · In progress', time: '28 min ago', tone: 'gold' },
   { icon: 'alert', title: 'Maintenance reported', detail: 'Room 107 · Air conditioning', time: '1 hr ago', tone: 'rose' },
-  { icon: 'user', title: 'New staff invitation', detail: 'Lê Hoàng Nam · Pending', time: '2 hrs ago', tone: 'blue' },
+  { icon: 'user', title: 'New staff account', detail: 'Lê Hoàng Nam · Active', time: '2 hrs ago', tone: 'blue' },
 ];
 
 function toStaffMember(user) {
@@ -39,16 +40,25 @@ function toStaffMember(user) {
     TECHNICIAN: 'Technician',
     MANAGER: 'Manager',
   };
+  const statusLabels = {
+    ACTIVE: 'Active',
+    PENDING: 'Pending',
+    SUSPENDED: 'Suspended',
+    INACTIVE: 'Inactive',
+  };
+  const status = user.status || (user.enabled ? 'ACTIVE' : 'SUSPENDED');
   return {
     id: user.id,
     name,
     email: user.email,
     role: roleLabels[role] || role,
     department: user.department || '—',
-    status: user.enabled ? 'Active' : 'Suspended',
+    status: statusLabels[status] || status,
     initials: name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
     lastActive: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Never',
+    createdAt: user.createdAt ? new Date(user.createdAt).getTime() : 0,
     color: 'gold',
+    avatarUrl: user.avatarUrl || null,
   };
 }
 
@@ -94,6 +104,7 @@ export function StaffStage({ user, onLogout }) {
   const [staff, setStaff] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All status');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
   const [modal, setModal] = useState(null);
@@ -110,11 +121,19 @@ export function StaffStage({ user, onLogout }) {
       .catch((error) => showNotice(error.message || 'Unable to load staff accounts.'));
   }, [canManageStaffAccounts]);
 
-  const filteredStaff = useMemo(() => staff.filter((member) => {
+  const filteredStaff = useMemo(() => {
     const query = search.toLowerCase();
-    const matchesSearch = !query || [member.name, member.email, member.role, member.department].some((field) => field.toLowerCase().includes(query));
-    return matchesSearch && (statusFilter === 'All status' || member.status === statusFilter);
-  }), [search, staff, statusFilter]);
+    return staff.filter((member) => {
+      const matchesSearch = !query || [member.name, member.email, member.role, member.department]
+        .some((field) => field.toLowerCase().includes(query));
+      return matchesSearch && (statusFilter === 'All status' || member.status === statusFilter);
+    }).sort((first, second) => {
+      if (sortOrder === 'name') return first.name.localeCompare(second.name);
+      return sortOrder === 'oldest'
+        ? first.createdAt - second.createdAt
+        : second.createdAt - first.createdAt;
+    });
+  }, [search, staff, statusFilter, sortOrder]);
 
   function showNotice(message) {
     setNotice(message);
@@ -125,18 +144,21 @@ export function StaffStage({ user, onLogout }) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const name = `${form.get('firstName')} ${form.get('lastName')}`.trim();
+    const payload = new FormData();
+    payload.set('fullName', name);
+    payload.set('email', form.get('email'));
+    payload.set('department', form.get('department'));
+    payload.set('roleName', form.get('role'));
+    payload.set('password', form.get('password'));
+    const avatar = form.get('avatar');
+    if (avatar?.size) payload.set('avatar', avatar);
     try {
-      const response = await staffApi.invite({
-        fullName: name,
-        email: form.get('email'),
-        department: form.get('department'),
-        roleName: form.get('role'),
-      });
-      setStaff((current) => [toStaffMember(response.user), ...current]);
+      const createdUser = await staffApi.create(payload);
+      setStaff((current) => [toStaffMember(createdUser), ...current]);
       setModal(null);
-      showNotice(`Staff account created. Temporary password: ${response.temporaryPassword}`);
+      showNotice('Staff account created.');
     } catch (error) {
-      showNotice(error.message || 'Unable to invite staff member.');
+      showNotice(error.message || 'Unable to create staff account.');
     }
   }
 
@@ -152,6 +174,7 @@ export function StaffStage({ user, onLogout }) {
         department: form.get('department'),
         roleName: toRoleName(form.get('role')),
         enabled: member.status === 'Active',
+        status: member.status.toUpperCase(),
       });
       setStaff((current) => current.map((item) => item.id === member.id ? toStaffMember(updatedUser) : item));
       setModal(null);
@@ -170,6 +193,7 @@ export function StaffStage({ user, onLogout }) {
         department: member.department === '—' ? '' : member.department,
         roleName: toRoleName(member.role),
         enabled: nextStatus === 'Active',
+        status: nextStatus.toUpperCase(),
       });
       setStaff((current) => current.map((item) => item.id === member.id ? toStaffMember(updatedUser) : item));
       showNotice(`${member.name} is now ${nextStatus.toLowerCase()}.`);
@@ -192,8 +216,8 @@ export function StaffStage({ user, onLogout }) {
       </aside>
 
       <main className="admin-main">
-        <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-expanded={isProfileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>⌄</button>{isProfileMenuOpen && <div className="profile-menu"><button type="button" onClick={() => { setProfileMenuOpen(false); onLogout(); }}>Đăng xuất</button></div>}</div></div></header>
-        <div className="admin-content">{notice && <div className="success-notice" role="status"><Icon name="check" size={16} />{notice}</div>}{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={toggleStatus} />}</div>
+        <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : activeTab === 'rooms' ? 'Room management' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-expanded={isProfileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>⌄</button>{isProfileMenuOpen && <div className="profile-menu"><button type="button" onClick={() => { setProfileMenuOpen(false); onLogout(); }}>Đăng xuất</button></div>}</div></div></header>
+        <div className="admin-content">{notice && <div className="success-notice" role="status"><Icon name="check" size={16} />{notice}</div>}{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'rooms' && hasPermission(user, staffPermissions.manageRooms) ? <RoomManagement /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sortOrder={sortOrder} setSortOrder={setSortOrder} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={toggleStatus} />}</div>
       </main>
       {modal && <AccountModal mode={modal.type} member={modal.member} onClose={() => setModal(null)} onSubmit={modal.type === 'edit' ? updateMember : handleCreateAccount} />}
     </div>
@@ -202,25 +226,63 @@ export function StaffStage({ user, onLogout }) {
 
 function Dashboard({ firstName, setActiveTab, canManageStaffAccounts }) {
   return <>
-    <div className="page-heading"><div><p className="eyebrow">Wednesday, October 07, 2026 <span className="heading-dot" /> Aurelia Hotel</p><h1>Good morning, {firstName}</h1><p>Here is the operational pulse of your hotel today.</p></div>{canManageStaffAccounts && <button className="primary-button" type="button" onClick={() => setActiveTab('accounts')}><Icon name="plus" size={17} /> Add staff account</button>}</div>
+    <div className="page-heading"><div><p className="eyebrow">Wednesday, October 07, 2026 <span className="heading-dot" /> Aurelia Hotel</p><h1>Good morning, {firstName}</h1><p>Here is the operational pulse of your hotel today.</p></div></div>
     <section className="stat-grid">{stats.map((stat) => <article className="stat-card" key={stat.label}><div className={`stat-icon ${stat.tone}`}><Icon name={stat.icon} size={19} /></div><p>{stat.label}</p><strong>{stat.value}</strong><small className={stat.tone === 'rose' ? 'stat-change attention' : 'stat-change'}>{stat.detail}</small></article>)}</section>
     <div className="dashboard-grid"><section className="panel occupancy-panel"><PanelHeading eyebrow="Performance" title="Occupancy overview"><button className="select-button" type="button">This week <span>⌄</span></button></PanelHeading><div className="chart-wrap"><div className="chart-y-axis"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div><div className="bar-chart">{[['Mon',62],['Tue',76],['Wed',68],['Thu',84],['Fri',91],['Sat',78],['Sun',64]].map(([day, value]) => <div className="bar-column" key={day}><div className="bar-value">{value}%</div><div className="bar-track"><div className="bar-fill" style={{ height: `${value}%` }} /></div><span>{day}</span></div>)}</div></div></section><section className="panel activity-panel"><PanelHeading eyebrow="Live updates" title="Recent activity"><button className="link-button" type="button">View all <Icon name="arrow" size={13} /></button></PanelHeading><div className="activity-list">{activities.map((activity) => <Activity key={activity.title} {...activity} />)}</div></section></div>
     <section className="panel arrivals-panel"><PanelHeading eyebrow="Front desk" title="Today’s arrivals"><button className="link-button" type="button">View reservations <Icon name="arrow" size={13} /></button></PanelHeading><div className="arrival-table"><div className="table-row table-head"><span>Guest</span><span>Room</span><span>Arrival</span><span>Status</span></div>{arrivals.map((arrival) => <div className="table-row" key={arrival.name}><span className="guest-cell"><span className={`avatar avatar-${arrival.color}`}>{arrival.initials}</span><span><strong>{arrival.name}</strong><small>{arrival.detail}</small></span></span><span>{arrival.room}</span><span>{arrival.time}</span><span className={`pill ${arrival.status.toLowerCase()}`}>{arrival.status}</span></div>)}</div></section>
   </>;
 }
 
+function RoomManagement() {
+  return <><div className="page-heading"><div><p className="eyebrow">Hotel operations <span className="heading-dot" /> Rooms</p><h1>Room management</h1><p>Manage room inventory, availability and housekeeping status from one workspace.</p></div></div><section className="panel empty-state room-management-empty"><span><Icon name="bed" size={22} /></span><h3>Room management workspace</h3><p>The room inventory view is ready. Room data and room actions will be connected here next.</p></section></>;
+}
+
 function PanelHeading({ eyebrow, title, children }) { return <div className="panel-heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>{children}</div>; }
 function Activity({ icon, title, detail, time, tone }) { return <div className="activity-item"><span className={`activity-icon ${tone}`}><Icon name={icon} size={14} /></span><div><strong>{title}</strong><small>{detail}</small></div><time>{time}</time></div>; }
 
-function Accounts({ staff, total, search, setSearch, statusFilter, setStatusFilter, onCreate, onEdit, onToggle }) {
-  return <><div className="page-heading accounts-heading"><div><p className="eyebrow">People & access <span className="heading-dot" /> {total} members</p><h1>Staff accounts</h1><p>Manage the people who keep Aurelia Hotel running smoothly.</p></div><button className="primary-button" type="button" onClick={onCreate}><Icon name="plus" size={17} /> Invite staff</button></div><section className="panel accounts-panel"><div className="accounts-toolbar"><label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, role or email" aria-label="Search staff" /></label><div className="toolbar-actions"><select className="filter-button" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option>All status</option><option>Active</option><option>Pending</option><option>Suspended</option></select><button className="filter-button" type="button">Newest first <span>⌄</span></button></div></div>{staff.length ? <div className="account-table"><div className="account-row account-head"><span>Team member</span><span>Role & department</span><span>Status</span><span>Last active</span><span /></div>{staff.map((member) => <div className="account-row" key={member.id}><span className="guest-cell"><span className={`avatar avatar-${member.color}`}>{member.initials}</span><span><strong>{member.name}</strong><small>{member.email}</small></span></span><span><strong className="role-name">{member.role}</strong><small>{member.department}</small></span><span><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></span><span className="last-active">{member.lastActive}</span><span className="row-actions"><button type="button" className="row-action" onClick={() => onEdit(member)}>Edit</button><button type="button" className="row-action row-action-muted" onClick={() => onToggle(member)}>{member.status === 'Active' ? 'Suspend' : 'Activate'}</button></span></div>)}</div> : <div className="empty-state"><span><Icon name="search" size={20} /></span><h3>No staff accounts found</h3><p>Try a different search or status filter.</p></div>}<p className="table-foot">Showing {staff.length} of {total} staff accounts · Changes are currently held in this workspace.</p></section></>;
+function StaffAvatar({ member }) {
+  const [source, setSource] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl;
+
+    if (!member.avatarUrl) {
+      setSource(null);
+      return undefined;
+    }
+
+    staffApi.avatar(member.id)
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        if (active) {
+          setSource(objectUrl);
+        } else {
+          URL.revokeObjectURL(objectUrl);
+        }
+      })
+      .catch(() => {
+        if (active) setSource(null);
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [member.id, member.avatarUrl]);
+
+  return <span className={`avatar avatar-${member.color}`}>{source ? <img className="avatar-image" src={source} alt="" /> : member.initials}</span>;
+}
+
+function Accounts({ staff, total, search, setSearch, statusFilter, setStatusFilter, sortOrder, setSortOrder, onCreate, onEdit, onToggle }) {
+  return <><div className="page-heading accounts-heading"><div><p className="eyebrow">People & access <span className="heading-dot" /> {total} members</p><h1>Staff accounts</h1><p>Manage the people who keep Aurelia Hotel running smoothly.</p></div><button className="primary-button" type="button" onClick={onCreate}><Icon name="plus" size={17} /> Create account</button></div><section className="panel accounts-panel"><div className="accounts-toolbar"><label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, role or email" aria-label="Search staff" /></label><div className="toolbar-actions"><select className="filter-button" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option>All status</option><option>Active</option><option>Pending</option><option>Suspended</option><option>Inactive</option></select><select className="filter-button" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort staff"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></div></div>{staff.length ? <div className="account-table"><div className="account-row account-head"><span>Team member</span><span>Role & department</span><span>Status</span><span>Last active</span><span /></div>{staff.map((member) => <div className="account-row" key={member.id}><span className="guest-cell"><StaffAvatar member={member} /><span><strong>{member.name}</strong><small>{member.email}</small></span></span><span><strong className="role-name">{member.role}</strong><small>{member.department}</small></span><span><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></span><span className="last-active">{member.lastActive}</span><span className="row-actions"><button type="button" className="row-action" onClick={() => onEdit(member)}>Edit</button><button type="button" className="row-action row-action-muted" onClick={() => onToggle(member)}>{member.status === 'Active' ? 'Suspend' : 'Activate'}</button></span></div>)}</div> : <div className="empty-state"><span><Icon name="search" size={20} /></span><h3>No staff accounts found</h3><p>Try a different search or status filter.</p></div>}<p className="table-foot">Showing {staff.length} of {total} staff accounts</p></section></>;
 }
 
 function AccountModal({ mode, member, onClose, onSubmit }) {
   const nameParts = member?.name.split(' ') || ['', ''];
   const firstName = member ? nameParts.slice(0, -1).join(' ') : '';
   const lastName = member ? nameParts.at(-1) : '';
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title"><div className="modal-heading"><div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{mode === 'edit' ? 'Edit staff account' : 'Invite a team member'}</h2><p>{mode === 'edit' ? 'Keep this person’s access details up to date.' : 'An invitation will be sent to their work email.'}</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button></div><form className="account-form" onSubmit={onSubmit}><div className="form-row"><label htmlFor="firstName">First name<input id="firstName" name="firstName" defaultValue={firstName} placeholder="Minh" required /></label><label htmlFor="lastName">Last name<input id="lastName" name="lastName" defaultValue={lastName} placeholder="Anh" required /></label></div><label htmlFor="email">Work email<input id="email" name="email" type="email" defaultValue={member?.email || ''} placeholder="name@aureliahotel.com" required /></label><div className="form-row"><label htmlFor="department">Department<select id="department" name="department" defaultValue={member?.department || 'Front office'}><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label><label htmlFor="role">Role<select id="role" name="role" defaultValue={member?.role || 'Receptionist'}><option>Receptionist</option><option>Housekeeper</option><option>Manager</option><option>Technician</option></select></label></div><div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit">{mode === 'edit' ? 'Save changes' : 'Send invitation'}</button></div></form></div></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title"><div className="modal-heading"><div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{mode === 'edit' ? 'Edit staff account' : 'Create a staff account'}</h2><p>{mode === 'edit' ? 'Keep this person’s access details up to date.' : 'Set the login credentials for this team member.'}</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button></div><form className="account-form" onSubmit={onSubmit} encType="multipart/form-data"><div className="form-row"><label htmlFor="firstName">First name<input id="firstName" name="firstName" defaultValue={firstName} placeholder="Minh" required /></label><label htmlFor="lastName">Last name<input id="lastName" name="lastName" defaultValue={lastName} placeholder="Anh" required /></label></div><label htmlFor="email">Work email<input id="email" name="email" type="email" defaultValue={member?.email || ''} placeholder="name@aureliahotel.com" required /></label>{mode === 'create' && <label htmlFor="password">Password<input id="password" name="password" type="password" minLength="8" maxLength="72" autoComplete="new-password" placeholder="At least 8 characters" required /></label>}{mode === 'create' && <label htmlFor="avatar">Avatar<input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" /><small>JPEG, PNG, GIF or WebP · max 5 MB</small></label>}<div className="form-row"><label htmlFor="department">Department<select id="department" name="department" defaultValue={member?.department || 'Front office'}><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label><label htmlFor="role">Role<select id="role" name="role" defaultValue={member?.role || 'Receptionist'}><option>Receptionist</option><option>Housekeeper</option><option>Manager</option><option>Technician</option></select></label></div><div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit">{mode === 'edit' ? 'Save changes' : 'Create account'}</button></div></form></div></div>;
 }
 
 function AccessDenied({ fullName, onLogout }) {

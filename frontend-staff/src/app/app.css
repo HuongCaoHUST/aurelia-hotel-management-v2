@@ -22,6 +22,7 @@ body {
 
 button, input { font: inherit; }
 button { cursor: pointer; }
+.auth-loading { display: grid; min-height: 100vh; place-items: center; color: var(--muted); font-size: 13px; }
 
 .login-page {
   position: relative;
@@ -250,7 +251,8 @@ button { cursor: pointer; }
 .accounts-panel .account-row .guest-cell small,
 .accounts-panel .account-row .pill,
 .accounts-panel .row-action,
-.accounts-panel .avatar { font-size: 14px; }
+.accounts-panel .avatar { font-size: 14px; overflow: hidden; }
+.accounts-panel .avatar-image { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .accounts-panel .account-head { letter-spacing: .04em; }
 
 @media (max-width: 720px) {
