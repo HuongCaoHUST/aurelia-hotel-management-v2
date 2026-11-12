@@ -15,6 +15,7 @@ export function Rooms({ onNotice }) {
   const [roomTypes, setRoomTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
 
   async function loadRooms() {
     setLoading(true);
@@ -71,17 +72,23 @@ export function Rooms({ onNotice }) {
     {loading ? <p className="rooms-empty">Loading rooms…</p> : groups.length ? <div className="room-groups">
       {groups.map((group) => <section className="room-group" key={group.id}>
         <div className="room-group-heading"><div><p className="eyebrow">Room type</p><h2>{group.name}</h2></div><span>{group.rooms.length} rooms</span></div>
-        {group.rooms.length ? <div className="room-card-grid">{group.rooms.map((room) => <RoomCard key={room.id} room={room} />)}</div> : <p className="room-group-empty">No rooms in this type yet.</p>}
+        {group.rooms.length ? <div className="room-card-grid">{group.rooms.map((room) => <RoomCard key={room.id} room={room} onOpen={() => setSelectedRoom(room)} />)}</div> : <p className="room-group-empty">No rooms in this type yet.</p>}
       </section>)}
     </div> : <section className="panel rooms-empty"><span>⌂</span><h2>No rooms yet</h2><p>Create a room type first, then add rooms to your inventory.</p></section>}
 
     {isFormOpen && <RoomModal roomTypes={roomTypes} onClose={() => setFormOpen(false)} onSubmit={createRoom} />}
+    {selectedRoom && <RoomDetailsModal room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
   </>;
 }
 
-function RoomCard({ room }) {
+function RoomCard({ room, onOpen }) {
   const photoCount = room.photos?.length || 0;
-  return <article className="room-card">
+  return <article className="room-card" role="button" tabIndex="0" aria-label={`View room ${room.roomNumber}`} onClick={onOpen} onKeyDown={(event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onOpen();
+    }
+  }}>
     <div className={`room-card-gallery room-card-gallery-${Math.min(photoCount, 3)}`}>
       {photoCount ? room.photos.map((photo) => <RoomImage key={photo.id} room={room} photo={photo} />) : <div className="room-card-no-image"><span>⌂</span><small>No image</small></div>}
     </div>
@@ -93,7 +100,7 @@ function RoomCard({ room }) {
   </article>;
 }
 
-function RoomImage({ room, photo }) {
+function RoomImage({ room, photo, className = 'room-card-image', loadingClassName = 'room-card-image-loading' }) {
   const [source, setSource] = useState(null);
 
   useEffect(() => {
@@ -111,7 +118,43 @@ function RoomImage({ room, photo }) {
     };
   }, [room.id, photo.id]);
 
-  return source ? <img className="room-card-image" src={source} alt={`${room.roomNumber} - ${photo.originalFilename || 'room image'}`} /> : <div className="room-card-image-loading" />;
+  return source ? <img className={className} src={source} alt={`${room.roomNumber} - ${photo.originalFilename || 'room image'}`} /> : <div className={loadingClassName} />;
+}
+
+function RoomDetailsModal({ room, onClose }) {
+  const photoCount = room.photos?.length || 0;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activePhoto = room.photos?.[activeIndex];
+  const thumbnailStart = Math.min(Math.max(activeIndex - 2, 0), Math.max(photoCount - 5, 0));
+  const thumbnails = room.photos?.slice(thumbnailStart, thumbnailStart + 5) || [];
+
+  function movePhoto(step) {
+    setActiveIndex((current) => (current + step + photoCount) % photoCount);
+  }
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="room-details-modal" role="dialog" aria-modal="true" aria-labelledby="room-details-title">
+      <div className="modal-heading"><div><p className="eyebrow">Room details</p><h2 id="room-details-title">Room {room.roomNumber}</h2><p>{room.roomTypeName}</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="room-details-content">
+        <div className="room-details-album">
+          <div className="room-details-main">
+            {activePhoto ? <RoomImage key={activePhoto.id} room={room} photo={activePhoto} className="room-details-main-image" loadingClassName="room-details-main-loading" /> : <div className="room-details-no-image"><span>⌂</span><p>No room images</p></div>}
+            {photoCount > 1 && <><button className="room-details-nav room-details-nav-prev" type="button" onClick={() => movePhoto(-1)} aria-label="Previous image">‹</button><button className="room-details-nav room-details-nav-next" type="button" onClick={() => movePhoto(1)} aria-label="Next image">›</button></>}
+          </div>
+          {photoCount > 1 && <div className="room-details-thumbnails" aria-label="Room image gallery">{thumbnails.map((photo, index) => {
+            const actualIndex = thumbnailStart + index;
+            return <button className={`room-details-thumbnail ${actualIndex === activeIndex ? 'is-active' : ''}`} type="button" key={photo.id} onClick={() => setActiveIndex(actualIndex)} aria-label={`View image ${actualIndex + 1}`}><RoomImage room={room} photo={photo} className="room-details-thumbnail-image" loadingClassName="room-details-thumbnail-loading" /></button>;
+          })}</div>}
+          {photoCount > 5 && <p className="room-details-photo-count">Showing image {activeIndex + 1} of {photoCount}</p>}
+        </div>
+        <div className="room-details-info">
+          <div className="room-details-status"><span className={`room-status room-status-${room.status.toLowerCase()}`}>{statusLabels[room.status] || room.status}</span><span>{photoCount} photos</span></div>
+          <dl className="room-details-list"><div><dt>Room number</dt><dd>{room.roomNumber}</dd></div><div><dt>Room type</dt><dd>{room.roomTypeName}</dd></div><div><dt>Floor</dt><dd>{room.floor}</dd></div><div><dt>Status</dt><dd>{statusLabels[room.status] || room.status}</dd></div></dl>
+          {room.notes && <div className="room-details-notes"><span>Notes</span><p>{room.notes}</p></div>}
+        </div>
+      </div>
+    </div>
+  </div>;
 }
 
 function RoomModal({ roomTypes, onClose, onSubmit }) {
