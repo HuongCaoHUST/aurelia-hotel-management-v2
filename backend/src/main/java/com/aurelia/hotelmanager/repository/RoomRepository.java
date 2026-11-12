@@ -2,6 +2,7 @@ package com.aurelia.hotelmanager.repository;
 
 import com.aurelia.hotelmanager.model.Room;
 import com.aurelia.hotelmanager.model.RoomStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -19,4 +20,7 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     List<Room> findAllByRoomTypeId(Long roomTypeId);
 
     boolean existsByRoomNumber(String roomNumber);
+
+    @EntityGraph(attributePaths = {"roomType", "photos"})
+    List<Room> findAllByOrderByRoomType_NameAscRoomNumberAsc();
 }

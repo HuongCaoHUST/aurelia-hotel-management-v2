@@ -24,6 +24,11 @@ export const roomTypeApi = {
   list: () => http.get('/room-types'),
   create: (data) => http.post('/room-types', data),
 };
+export const roomApi = {
+  list: () => http.get('/rooms'),
+  create: (data) => http.post('/rooms', data),
+  image: (roomId, photoId) => http.getBlob(`/rooms/${roomId}/images/${photoId}`),
+};
 export const amenityApi = {
   groups: () => http.get('/amenities/groups'),
   createGroup: (data) => http.post('/amenities/groups', data),
