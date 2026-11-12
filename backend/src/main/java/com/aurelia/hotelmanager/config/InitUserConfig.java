@@ -55,8 +55,36 @@ public class InitUserConfig {
                             .name("Manage staff accounts")
                             .description("Manage staff accounts and access")
                             .build()));
+            Permission createRole = permissionRepository.findByCode("ROLE_CREATE")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROLE_CREATE")
+                            .name("Create roles")
+                            .description("Create new access roles")
+                            .build()));
+            Permission updateRole = permissionRepository.findByCode("ROLE_UPDATE")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROLE_UPDATE")
+                            .name("Edit roles")
+                            .description("Update role names and descriptions")
+                            .build()));
+            Permission deleteRole = permissionRepository.findByCode("ROLE_DELETE")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROLE_DELETE")
+                            .name("Delete roles")
+                            .description("Delete roles that are no longer needed")
+                            .build()));
+            Permission managePermissions = permissionRepository.findByCode("ROLE_MANAGE_PERMISSIONS")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROLE_MANAGE_PERMISSIONS")
+                            .name("Update permissions")
+                            .description("Assign permissions to access roles")
+                            .build()));
             adminRole.getPermissions().add(dashboardView);
             adminRole.getPermissions().add(manageRoles);
+            adminRole.getPermissions().add(createRole);
+            adminRole.getPermissions().add(updateRole);
+            adminRole.getPermissions().add(deleteRole);
+            adminRole.getPermissions().add(managePermissions);
             roleRepository.save(adminRole);
 
             userRepository.findByEmail(adminEmail).ifPresentOrElse(user -> {

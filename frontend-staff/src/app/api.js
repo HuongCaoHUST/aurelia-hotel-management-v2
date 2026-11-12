@@ -40,4 +40,12 @@ export const amenityApi = {
   update: (id, data) => http.put(`/amenities/${id}`, data),
   delete: (id) => http.delete(`/amenities/${id}`),
 };
+export const accessApi = {
+  roles: () => http.get('/roles'),
+  permissions: () => http.get('/permissions'),
+  createRole: (data) => http.post('/roles', data),
+  updateRole: (id, data) => http.put(`/roles/${id}`, data),
+  deleteRole: (id) => http.delete(`/roles/${id}`),
+  replaceRolePermissions: (roleId, permissionIds) => http.put(`/roles/${roleId}/permissions`, { permissionIds }),
+};
 export { http };
