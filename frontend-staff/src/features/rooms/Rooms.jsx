@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { roomApi, roomTypeApi } from '../../app/api.js';
+import { DeleteConfirmModal } from './DeleteConfirmModal.jsx';
 
 const statusLabels = {
   AVAILABLE: 'Available',
@@ -16,6 +17,8 @@ export function Rooms({ onNotice }) {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [deleteConfirmRoom, setDeleteConfirmRoom] = useState(null);
+  const [deletingRoomId, setDeletingRoomId] = useState(null);
 
   async function loadRooms() {
     setLoading(true);
@@ -35,15 +38,16 @@ export function Rooms({ onNotice }) {
   }, []);
 
   useEffect(() => {
-    if (!isFormOpen && !selectedRoom) return undefined;
+    if (!isFormOpen && !selectedRoom && !deleteConfirmRoom) return undefined;
     function handleKeyDown(event) {
-      if (event.key !== 'Escape') return;
-      if (selectedRoom) setSelectedRoom(null);
+      if (event.key !== 'Escape' || deletingRoomId) return;
+      if (deleteConfirmRoom) setDeleteConfirmRoom(null);
+      else if (selectedRoom) setSelectedRoom(null);
       else setFormOpen(false);
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFormOpen, selectedRoom]);
+  }, [isFormOpen, selectedRoom, deleteConfirmRoom, deletingRoomId]);
 
   const groups = useMemo(() => {
     const grouped = roomTypes.map((roomType) => ({
@@ -70,6 +74,21 @@ export function Rooms({ onNotice }) {
     }
   }
 
+  async function removeRoom(room) {
+    setDeletingRoomId(room.id);
+    try {
+      await roomApi.delete(room.id);
+      setRooms((current) => current.filter((item) => item.id !== room.id));
+      setDeleteConfirmRoom(null);
+      setSelectedRoom(null);
+      onNotice(`Room ${room.roomNumber} deleted.`);
+    } catch (error) {
+      onNotice(error.message || 'Could not delete room.', 'error');
+    } finally {
+      setDeletingRoomId(null);
+    }
+  }
+
   return <>
     <div className="page-heading rooms-heading">
       <div>
@@ -86,7 +105,8 @@ export function Rooms({ onNotice }) {
     </div> : <section className="panel rooms-empty"><span>⌂</span><h2>No rooms yet</h2><p>Create a room type first, then add rooms to your inventory.</p></section>}
 
     {isFormOpen && <RoomModal roomTypes={roomTypes} onClose={() => setFormOpen(false)} onSubmit={createRoom} />}
-    {selectedRoom && <RoomDetailsModal room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
+    {selectedRoom && <RoomDetailsModal room={selectedRoom} onClose={() => setSelectedRoom(null)} onDelete={() => setDeleteConfirmRoom(selectedRoom)} />}
+    {deleteConfirmRoom && <DeleteConfirmModal entityLabel="Room" itemName={`room ${deleteConfirmRoom.roomNumber}`} itemDetails={`${deleteConfirmRoom.roomTypeName} · Floor ${deleteConfirmRoom.floor}`} description="This action permanently removes this room and cannot be undone." warning="Deletion is blocked when this room is linked to a reservation." dialogId="delete-room" isDeleting={deletingRoomId === deleteConfirmRoom.id} onClose={() => setDeleteConfirmRoom(null)} onConfirm={() => removeRoom(deleteConfirmRoom)} />}
   </>;
 }
 
@@ -130,7 +150,7 @@ function RoomImage({ room, photo, className = 'room-card-image', loadingClassNam
   return source ? <img className={className} src={source} alt={`${room.roomNumber} - ${photo.originalFilename || 'room image'}`} /> : <div className={loadingClassName} />;
 }
 
-function RoomDetailsModal({ room, onClose }) {
+function RoomDetailsModal({ room, onClose, onDelete }) {
   const photoCount = room.photos?.length || 0;
   const [activeIndex, setActiveIndex] = useState(0);
   const activePhoto = room.photos?.[activeIndex];
@@ -160,6 +180,7 @@ function RoomDetailsModal({ room, onClose }) {
           <div className="room-details-status"><span className={`room-status room-status-${room.status.toLowerCase()}`}>{statusLabels[room.status] || room.status}</span><span>{photoCount} photos</span></div>
           <dl className="room-details-list"><div><dt>Room number</dt><dd>{room.roomNumber}</dd></div><div><dt>Room type</dt><dd>{room.roomTypeName}</dd></div><div><dt>Floor</dt><dd>{room.floor}</dd></div><div><dt>Status</dt><dd>{statusLabels[room.status] || room.status}</dd></div></dl>
           {room.notes && <div className="room-details-notes"><span>Notes</span><p>{room.notes}</p></div>}
+          <div className="room-details-actions"><button className="danger-button" type="button" onClick={() => onDelete(room)}>Delete room</button></div>
         </div>
       </div>
     </div>

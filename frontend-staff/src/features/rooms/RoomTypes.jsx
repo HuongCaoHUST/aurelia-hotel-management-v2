@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { roomTypeApi } from '../../app/api.js';
+import { DeleteConfirmModal } from './DeleteConfirmModal.jsx';
 
 const emptyRoomType = {
   name: '',
@@ -14,6 +15,8 @@ export function RoomTypes({ onNotice }) {
   const [roomTypes, setRoomTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(null);
+  const [deleteConfirmRoomType, setDeleteConfirmRoomType] = useState(null);
+  const [deletingRoomTypeId, setDeletingRoomTypeId] = useState(null);
 
   async function loadRoomTypes() {
     setLoading(true);
@@ -31,13 +34,15 @@ export function RoomTypes({ onNotice }) {
   }, []);
 
   useEffect(() => {
-    if (!form) return undefined;
+    if (!form && !deleteConfirmRoomType) return undefined;
     function handleKeyDown(event) {
-      if (event.key === 'Escape') setForm(null);
+      if (event.key !== 'Escape' || deletingRoomTypeId) return;
+      if (deleteConfirmRoomType) setDeleteConfirmRoomType(null);
+      else setForm(null);
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [form]);
+  }, [form, deleteConfirmRoomType, deletingRoomTypeId]);
 
   async function createRoomType(event) {
     event.preventDefault();
@@ -61,6 +66,36 @@ export function RoomTypes({ onNotice }) {
     }
   }
 
+  function editRoomType(roomType) {
+    setForm({
+      id: roomType.id,
+      name: roomType.name,
+      description: roomType.description || '',
+      basePrice: roomType.basePrice,
+      maxOccupancy: roomType.maxOccupancy,
+      sizeInSquareMeters: roomType.sizeInSquareMeters || '',
+      bedType: roomType.bedType || '',
+    });
+  }
+
+  async function deleteRoomType(roomType) {
+    setDeletingRoomTypeId(roomType.id);
+    try {
+      await roomTypeApi.delete(roomType.id);
+      setRoomTypes((current) => current.filter((item) => item.id !== roomType.id));
+      setDeleteConfirmRoomType(null);
+      onNotice(`${roomType.name} deleted.`);
+    } catch (error) {
+      onNotice(error.message || 'Could not delete room type.', 'error');
+    } finally {
+      setDeletingRoomTypeId(null);
+    }
+  }
+
+  function requestDeleteRoomType(roomType) {
+    setDeleteConfirmRoomType(roomType);
+  }
+
   return <>
     <div className="page-heading room-types-heading">
       <div>
@@ -79,25 +114,30 @@ export function RoomTypes({ onNotice }) {
           <span>{roomType.maxOccupancy} guests</span>
           <span>{roomType.sizeInSquareMeters ? `${roomType.sizeInSquareMeters} m²` : '—'}</span>
           <strong className="room-count-value">{roomType.roomCount}</strong>
-          <span className="room-type-actions"><button className="room-type-edit-button" type="button" onClick={() => setForm({
-            id: roomType.id,
-            name: roomType.name,
-            description: roomType.description || '',
-            basePrice: roomType.basePrice,
-            maxOccupancy: roomType.maxOccupancy,
-            sizeInSquareMeters: roomType.sizeInSquareMeters || '',
-            bedType: roomType.bedType || '',
-          })}>Edit</button></span>
+          <RoomTypeActions onEdit={() => editRoomType(roomType)} onDelete={() => requestDeleteRoomType(roomType)} />
         </div>)}
       </div> : <div className="room-type-empty"><span>⌂</span><h3>No room types yet</h3><p>Add your first room type to start managing inventory.</p></div>}
     </section>
 
     {form && <RoomTypeModal value={form} onChange={setForm} onClose={() => setForm(null)} onSubmit={createRoomType} />}
+    {deleteConfirmRoomType && <DeleteConfirmModal entityLabel="Room type" itemName={deleteConfirmRoomType.name} itemDetails={`${deleteConfirmRoomType.roomCount} rooms · ${deleteConfirmRoomType.bedType || 'Bed type not updated'}`} description="This action permanently removes this room type and cannot be undone." warning="Deletion is blocked while rooms or reservation history still use this room type." dialogId="delete-room-type" isDeleting={deletingRoomTypeId === deleteConfirmRoomType.id} onClose={() => setDeleteConfirmRoomType(null)} onConfirm={() => deleteRoomType(deleteConfirmRoomType)} />}
   </>;
 }
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
+}
+
+function RoomTypeActions({ onEdit, onDelete }) {
+  const [isOpen, setOpen] = useState(false);
+  function closeOnBlur(event) {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }
+
+  return <div className="room-type-actions room-type-menu" onBlur={closeOnBlur} onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
+    <button className="room-type-menu-button" type="button" aria-label="Room type actions" aria-haspopup="menu" aria-expanded={isOpen} onClick={() => setOpen((open) => !open)}><span className="room-type-menu-dots" aria-hidden="true"><span /><span /><span /></span></button>
+    {isOpen && <div className="room-type-menu-dropdown" role="menu"><button type="button" role="menuitem" onClick={() => { setOpen(false); onEdit(); }}>Edit</button><button className="is-danger" type="button" role="menuitem" onClick={() => { setOpen(false); onDelete(); }}>Delete</button></div>}
+  </div>;
 }
 
 function RoomTypeModal({ value, onChange, onClose, onSubmit }) {

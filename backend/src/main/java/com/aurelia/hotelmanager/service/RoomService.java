@@ -9,6 +9,7 @@ import com.aurelia.hotelmanager.model.RoomStatus;
 import com.aurelia.hotelmanager.model.RoomType;
 import com.aurelia.hotelmanager.repository.RoomRepository;
 import com.aurelia.hotelmanager.repository.RoomTypeRepository;
+import com.aurelia.hotelmanager.repository.ReservationRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
+    private final ReservationRoomRepository reservationRoomRepository;
     private final RoomImageStorageService roomImageStorageService;
 
     public List<RoomResponse> list() {
@@ -86,6 +88,24 @@ public class RoomService {
             uploadedKeys.forEach(roomImageStorageService::delete);
             throw exception;
         }
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Room not found"));
+        if (reservationRoomRepository.existsByRoomId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Room is linked to a reservation and cannot be deleted");
+        }
+
+        List<String> objectKeys = room.getPhotos().stream()
+                .map(RoomPhoto::getObjectKey)
+                .toList();
+        roomRepository.delete(room);
+        roomRepository.flush();
+        objectKeys.forEach(roomImageStorageService::delete);
     }
 
     private RoomResponse toResponse(Room room) {

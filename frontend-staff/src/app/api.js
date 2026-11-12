@@ -24,10 +24,12 @@ export const roomTypeApi = {
   list: () => http.get('/room-types'),
   create: (data) => http.post('/room-types', data),
   update: (id, data) => http.put(`/room-types/${id}`, data),
+  delete: (id) => http.delete(`/room-types/${id}`),
 };
 export const roomApi = {
   list: () => http.get('/rooms'),
   create: (data) => http.post('/rooms', data),
+  delete: (id) => http.delete(`/rooms/${id}`),
   image: (roomId, photoId) => http.getBlob(`/rooms/${roomId}/images/${photoId}`),
 };
 export const amenityApi = {

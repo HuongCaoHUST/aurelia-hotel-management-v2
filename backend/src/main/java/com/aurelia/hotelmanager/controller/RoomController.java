@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +48,12 @@ public class RoomController {
     public RoomResponse create(@Valid @ModelAttribute RoomRequest request,
                                @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         return roomService.create(request, images);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        roomService.delete(id);
     }
 
     @GetMapping("/{roomId}/images/{photoId}")

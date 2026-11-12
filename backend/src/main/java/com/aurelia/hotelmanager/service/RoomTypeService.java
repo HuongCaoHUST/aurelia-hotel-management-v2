@@ -5,6 +5,7 @@ import com.aurelia.hotelmanager.dto.response.RoomTypeResponse;
 import com.aurelia.hotelmanager.model.RoomType;
 import com.aurelia.hotelmanager.model.RoomTypeStatus;
 import com.aurelia.hotelmanager.repository.RoomTypeRepository;
+import com.aurelia.hotelmanager.repository.ReservationRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import java.util.Locale;
 public class RoomTypeService {
 
     private final RoomTypeRepository roomTypeRepository;
+    private final ReservationRoomRepository reservationRoomRepository;
 
     public List<RoomTypeResponse> list() {
         return roomTypeRepository.findAll(Sort.by(Sort.Direction.ASC, "name")).stream()
@@ -69,6 +71,20 @@ public class RoomTypeService {
         roomType.setSizeInSquareMeters(request.getSizeInSquareMeters());
         roomType.setBedType(normalizeOptional(request.getBedType()));
         return toResponse(roomTypeRepository.save(roomType));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        RoomType roomType = roomTypeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Room type not found"));
+        if (!roomType.getRooms().isEmpty() || reservationRoomRepository.existsByRoomTypeId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Room type is in use and cannot be deleted");
+        }
+
+        roomTypeRepository.delete(roomType);
+        roomTypeRepository.flush();
     }
 
     private RoomTypeResponse toResponse(RoomType roomType) {

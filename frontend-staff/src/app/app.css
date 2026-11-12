@@ -399,6 +399,15 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .room-type-head span { color: #a59c91; }
 .room-count-value { color: var(--gold-dark) !important; font-size: 18px; }
 .room-type-actions { display: flex; justify-content: flex-end; }
+.room-type-menu { position: relative; }
+.room-type-menu-button { display: grid; width: 40px; height: 40px; place-items: center; padding: 0; border: 0; color: var(--gold-dark); background: transparent; transition: color .2s ease; }
+.room-type-menu-button:hover { color: var(--ink); background: transparent; }
+.room-type-menu-dots { display: flex; align-items: center; gap: 4px; }
+.room-type-menu-dots span { display: block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.room-type-menu-dropdown { position: absolute; z-index: 6; top: calc(100% + 5px); right: 0; min-width: 120px; padding: 5px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 14px 30px rgba(59, 48, 39, .14); }
+.room-type-menu-dropdown button { display: block; width: 100%; padding: 9px 11px; border: 0; color: var(--ink); background: transparent; font-size: 13px; text-align: left; }
+.room-type-menu-dropdown button:hover { background: #f4eee7; }
+.room-type-menu-dropdown button.is-danger { color: var(--rose); }
 .room-type-edit-button { padding: 6px 0; border: 0; color: var(--gold-dark); background: transparent; cursor: pointer; font-size: 12px; }
 .room-type-edit-button:hover { text-decoration: underline; }
 .room-type-empty { display: grid; justify-items: center; gap: 8px; padding: 58px 24px; color: var(--muted); text-align: center; }
@@ -506,6 +515,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .room-details-notes { margin-top: 22px; }
 .room-details-notes > span { color: var(--muted); font-size: 14px; }
 .room-details-notes p { margin: 7px 0 0; color: var(--ink); font-size: 16px; line-height: 1.55; }
+.room-details-actions { display: flex; justify-content: flex-end; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
 
 @media (max-width: 720px) {
   .room-group { padding: 19px 16px 20px; }
@@ -617,6 +627,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .delete-role-card strong, .delete-role-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .delete-role-card strong { color: var(--ink); font-size: 13px; font-weight: 600; }
 .delete-role-card small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.room-delete-card-mark { display: grid; width: 36px; height: 36px; flex-shrink: 0; place-items: center; border-radius: 50%; color: var(--gold-dark); background: #eadbc9; }
 .delete-role-warning { display: flex; align-items: flex-start; gap: 9px; margin-top: 13px; padding: 11px 12px; border: 1px solid #f0d2cb; color: #9d5b53; background: #fff6f3; font-size: 11px; line-height: 1.45; }
 .delete-role-warning > span { display: grid; width: 17px; height: 17px; flex-shrink: 0; place-items: center; border-radius: 50%; color: #fff; background: #bd7067; font-size: 11px; font-weight: 700; }
 .delete-role-warning p { margin: 0; }
