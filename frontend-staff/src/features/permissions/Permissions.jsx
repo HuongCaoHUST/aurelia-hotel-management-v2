@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { hasPermission } from '../../app/access.js';
-import { accessApi } from '../../app/api.js';
+import { accessApi, authService } from '../../app/api.js';
 
 const groupDefinitions = [
   { id: 'overview', label: 'Overview', description: 'Hotel-wide visibility', icon: 'grid', matches: (code) => code.startsWith('DASHBOARD_') },
@@ -79,6 +79,7 @@ function PermissionIcon({ name, size = 17 }) {
 }
 
 export function Permissions({ user, onNotice }) {
+  const [resolvedUser, setResolvedUser] = useState(user || null);
   const [roleList, setRoleList] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
@@ -89,9 +90,29 @@ export function Permissions({ user, onNotice }) {
   const [isLoading, setLoading] = useState(true);
   const [isSaving, setSaving] = useState(false);
   const [roleModal, setRoleModal] = useState(null);
+  const [deleteConfirmRole, setDeleteConfirmRole] = useState(null);
   const [isRoleSaving, setRoleSaving] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setResolvedUser(user);
+      return undefined;
+    }
+    if (!authService.hasSession()) return undefined;
+
+    let active = true;
+    authService.currentUser()
+      .then((currentUser) => {
+        if (active) setResolvedUser(currentUser);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const loadAccessData = useCallback(async () => {
     setLoading(true);
@@ -125,10 +146,11 @@ export function Permissions({ user, onNotice }) {
   const coverage = roleList.length && permissions.length
     ? Math.round((assignedCount / (roleList.length * permissions.length)) * 100)
     : 0;
-  const canCreateRole = !user || hasPermission(user, 'ROLE_CREATE');
-  const canUpdateRole = !user || hasPermission(user, 'ROLE_UPDATE');
-  const canDeleteRole = !user || hasPermission(user, 'ROLE_DELETE');
-  const canManagePermissions = !user || hasPermission(user, 'ROLE_MANAGE_PERMISSIONS');
+  const permissionUser = user || resolvedUser;
+  const canCreateRole = !permissionUser || hasPermission(permissionUser, 'ROLE_CREATE');
+  const canUpdateRole = !permissionUser || hasPermission(permissionUser, 'ROLE_UPDATE');
+  const canDeleteRole = !permissionUser || hasPermission(permissionUser, 'ROLE_DELETE');
+  const canManagePermissions = !permissionUser || hasPermission(permissionUser, 'ROLE_MANAGE_PERMISSIONS');
 
   const visibleRoles = useMemo(() => {
     const query = roleSearch.trim().toLowerCase();
@@ -155,19 +177,6 @@ export function Permissions({ user, onNotice }) {
       const nextPermissions = currentPermissions.includes(permissionId)
         ? currentPermissions.filter((id) => id !== permissionId)
         : [...currentPermissions, permissionId];
-      return { ...current, [selectedRole.id]: nextPermissions };
-    });
-  }
-
-  function toggleGroup(group) {
-    if (!selectedRole) return;
-    const groupIds = group.permissions.map((permission) => permission.id);
-    const hasEveryPermission = groupIds.every((id) => selectedPermissionIds.includes(id));
-    setRolePermissions((current) => {
-      const currentPermissions = current[selectedRole.id] || [];
-      const nextPermissions = hasEveryPermission
-        ? currentPermissions.filter((id) => !groupIds.includes(id))
-        : [...new Set([...currentPermissions, ...groupIds])];
       return { ...current, [selectedRole.id]: nextPermissions };
     });
   }
@@ -226,7 +235,6 @@ export function Permissions({ user, onNotice }) {
 
   async function deleteRole(role) {
     if (role.code === 'ADMIN' || deletingRoleId) return;
-    if (!window.confirm(`Xóa role ${role.name}? Thao tác này không thể hoàn tác.`)) return;
     setDeletingRoleId(role.id);
     try {
       await accessApi.deleteRole(role.id);
@@ -244,7 +252,13 @@ export function Permissions({ user, onNotice }) {
       onNotice?.(requestError.message || 'Không thể xóa role.', 'error');
     } finally {
       setDeletingRoleId(null);
+      setDeleteConfirmRole(null);
     }
+  }
+
+  function requestDeleteRole(role) {
+    if (role.code === 'ADMIN' || deletingRoleId) return;
+    setDeleteConfirmRole(role);
   }
 
   if (isLoading) {
@@ -258,12 +272,9 @@ export function Permissions({ user, onNotice }) {
   return <>
     <div className="page-heading permissions-heading">
       <div>
-        <p className="eyebrow">People & access <span className="heading-dot" /> Role governance</p>
         <h1>Permissions</h1>
-        <p>Control what each team role can see and manage across Aurelia Hotel.</p>
       </div>
       <div className="permissions-heading-actions">
-        <button className="secondary-button" type="button" onClick={() => setRoleModal({ mode: 'create' })} disabled={!canCreateRole}><PermissionIcon name="plus" size={16} /> Create role</button>
         {isDirty && <span className="unsaved-label"><span /> Unsaved changes</span>}
         <button className="secondary-button" type="button" onClick={discardChanges} disabled={!isDirty || isSaving}>Discard</button>
         <button className="primary-button" type="button" onClick={saveChanges} disabled={!isDirty || isSaving || !canManagePermissions}><PermissionIcon name="check" size={16} />{isSaving ? 'Saving…' : 'Save changes'}</button>
@@ -274,12 +285,11 @@ export function Permissions({ user, onNotice }) {
       <article className="permissions-stat-card"><span className="permissions-stat-icon gold"><PermissionIcon name="briefcase" /></span><p>Active roles</p><strong>{roleList.length}</strong><small>From the hotel database</small></article>
       <article className="permissions-stat-card"><span className="permissions-stat-icon teal"><PermissionIcon name="key" /></span><p>Permission rules</p><strong>{permissions.length}</strong><small>Loaded from the API</small></article>
       <article className="permissions-stat-card"><span className="permissions-stat-icon blue"><PermissionIcon name="check" /></span><p>Access coverage</p><strong>{coverage}%</strong><small>{assignedCount} assignments in total</small></article>
-      <div className="permissions-info-card"><span className="permissions-info-mark">i</span><div><strong>Least privilege by default</strong><p>Only roles and permissions stored in the hotel database appear in this workspace.</p></div></div>
     </section>
 
     {!roleList.length || !permissions.length ? <div className="panel permissions-state permissions-state-empty"><span className="permissions-state-icon"><PermissionIcon name="key" size={20} /></span><h2>No access policy found</h2><p>{!roleList.length ? 'No roles have been created in the database yet.' : 'No permissions have been created in the database yet.'}</p></div> : <div className="permissions-layout">
       <section className="panel role-list-panel">
-        <div className="permissions-panel-heading"><div><p className="eyebrow">Access profiles</p><h2>Roles <span>{roleList.length}</span></h2></div></div>
+        <div className="permissions-panel-heading"><div><p className="eyebrow">Access profiles</p><h2>Roles <span>{roleList.length}</span></h2></div><button className="role-create-icon-button" type="button" onClick={() => setRoleModal({ mode: 'create' })} disabled={!canCreateRole} aria-label="Create role" title={canCreateRole ? 'Create role' : 'Missing ROLE_CREATE permission'}><PermissionIcon name="plus" size={17} /></button></div>
         <label className="permissions-search"><PermissionIcon name="search" size={16} /><input value={roleSearch} onChange={(event) => setRoleSearch(event.target.value)} placeholder="Search roles" aria-label="Search roles" /></label>
         <div className="role-list">
           {visibleRoles.map((role) => {
@@ -292,7 +302,7 @@ export function Permissions({ user, onNotice }) {
               </button>
               <span className="role-list-actions">
                 <button className="role-card-action" type="button" onClick={() => setRoleModal({ mode: 'edit', role })} disabled={!canUpdateRole} aria-label={`Edit ${role.name}`} title={canUpdateRole ? `Edit ${role.name}` : 'Missing ROLE_UPDATE permission'}><PermissionIcon name="edit" size={14} /></button>
-                <button className="role-card-action is-danger" type="button" onClick={() => deleteRole(role)} disabled={!canDeleteRole || role.code === 'ADMIN' || deletingRoleId === role.id} aria-label={`Delete ${role.name}`} title={role.code === 'ADMIN' ? 'ADMIN cannot be deleted' : canDeleteRole ? `Delete ${role.name}` : 'Missing ROLE_DELETE permission'}>{deletingRoleId === role.id ? '…' : <PermissionIcon name="trash" size={14} />}</button>
+                <button className="role-card-action is-danger" type="button" onClick={() => requestDeleteRole(role)} disabled={!canDeleteRole || role.code === 'ADMIN' || deletingRoleId === role.id} aria-label={`Delete ${role.name}`} title={role.code === 'ADMIN' ? 'ADMIN cannot be deleted' : canDeleteRole ? `Delete ${role.name}` : 'Missing ROLE_DELETE permission'}>{deletingRoleId === role.id ? '…' : <PermissionIcon name="trash" size={14} />}</button>
               </span>
             </div>;
           })}
@@ -305,19 +315,17 @@ export function Permissions({ user, onNotice }) {
         <div className="permission-toolbar"><label className="permissions-search"><PermissionIcon name="search" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search permissions" aria-label="Search permissions" /></label></div>
         <div className="permission-groups">
           {visibleGroups.map((group) => {
-            const enabledInGroup = group.permissions.filter((permission) => isPermissionEnabled(permission.id)).length;
-            const groupIsComplete = enabledInGroup === group.permissions.length;
             return <section className="permission-group" key={group.id}>
-              <div className="permission-group-heading"><div><span className="permission-group-icon"><PermissionIcon name={group.icon} size={16} /></span><div><h3>{group.label}</h3><p>{group.description}</p></div></div><button className={`permission-switch permission-group-toggle ${groupIsComplete ? 'is-on' : ''}`} type="button" role="switch" aria-checked={groupIsComplete} aria-label={`${groupIsComplete ? 'Disable' : 'Enable'} all ${group.label} permissions`} title={`${groupIsComplete ? 'Disable' : 'Enable'} all ${group.label} permissions`} onClick={() => toggleGroup(group)}><span /></button></div>
+              <div className="permission-group-heading"><div><span className="permission-group-icon"><PermissionIcon name={group.icon} size={16} /></span><div><h3>{group.label}</h3><p>{group.description}</p></div></div></div>
               <div className="permission-rows">{group.permissions.map((permission) => <div className={`permission-row ${isPermissionEnabled(permission.id) ? 'is-enabled' : ''}`} key={permission.id}><div className="permission-row-copy"><strong>{permission.name}</strong><p>{permission.description}</p><code>{permission.code}</code></div><button className={`permission-switch ${isPermissionEnabled(permission.id) ? 'is-on' : ''}`} type="button" role="switch" aria-checked={isPermissionEnabled(permission.id)} aria-label={`${isPermissionEnabled(permission.id) ? 'Disable' : 'Enable'} ${permission.name}`} onClick={() => togglePermission(permission.id)}><span /></button></div>)}</div>
             </section>;
           })}
           {!visibleGroups.length && <div className="permission-empty-state"><span><PermissionIcon name="search" size={21} /></span><h3>No permissions found</h3><p>Try searching for a different permission or code.</p></div>}
         </div>
-        <div className="permission-matrix-footer"><span className="status-dot" /> Changes apply to every staff account assigned to this role <span>·</span> Last reviewed from the database</div>
       </section>}
     </div>}
     {roleModal && <RoleModal mode={roleModal.mode} role={roleModal.role} isSaving={isRoleSaving} onClose={() => setRoleModal(null)} onSubmit={saveRole} />}
+    {deleteConfirmRole && <DeleteRoleModal role={deleteConfirmRole} isDeleting={deletingRoleId === deleteConfirmRole.id} onClose={() => setDeleteConfirmRole(null)} onConfirm={() => deleteRole(deleteConfirmRole)} />}
   </>;
 }
 
@@ -330,6 +338,20 @@ function RoleModal({ mode, role, isSaving, onClose, onSubmit }) {
         <label htmlFor="role-description">Description<span className="field-hint">Optional</span><textarea id="role-description" name="description" defaultValue={role?.description || ''} placeholder="What is this role responsible for?" maxLength="500" /></label>
         <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : mode === 'edit' ? 'Save role' : 'Create role'}</button></div>
       </form>
+    </div>
+  </div>;
+}
+
+function DeleteRoleModal({ role, isDeleting, onClose, onConfirm }) {
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !isDeleting && onClose()}>
+    <div className="account-modal delete-role-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-role-title" aria-describedby="delete-role-description">
+      <div className="delete-role-modal-top"><span className="delete-role-icon"><PermissionIcon name="trash" size={21} /></span><button className="close-button" type="button" onClick={onClose} disabled={isDeleting} aria-label="Close"><PermissionIcon name="close" /></button></div>
+      <p className="eyebrow">Role removal</p>
+      <h2 id="delete-role-title">Delete {role.name}?</h2>
+      <p className="delete-role-copy" id="delete-role-description">This action permanently removes this access profile and cannot be undone.</p>
+      <div className="delete-role-card"><span className={`role-avatar ${role.tone}`}><PermissionIcon name={role.icon} size={17} /></span><span><strong>{role.name}</strong><small>{role.description}</small></span></div>
+      <div className="delete-role-warning"><span>!</span><p>Accounts assigned to this role may lose their access profile. Make sure the role is no longer needed before deleting it.</p></div>
+      <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose} disabled={isDeleting}>Keep role</button><button className="danger-button" type="button" onClick={onConfirm} disabled={isDeleting}><PermissionIcon name="trash" size={15} />{isDeleting ? 'Deleting…' : 'Delete role'}</button></div>
     </div>
   </div>;
 }

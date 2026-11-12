@@ -25,8 +25,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StaffAccountService {
 
-    private static final Set<String> STAFF_ROLES = Set.of(
-            "RECEPTIONIST", "HOUSEKEEPER", "TECHNICIAN", "MANAGER");
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -129,15 +127,13 @@ public class StaffAccountService {
 
     private Role getStaffRole(String roleName) {
         String normalized = normalizeRole(roleName);
-        if (!STAFF_ROLES.contains(normalized)) {
+        if ("ADMIN".equals(normalized)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Vai trò nhân viên không hợp lệ");
+                    "Không thể gán role ADMIN cho tài khoản nhân viên");
         }
         return roleRepository.findByName(normalized)
-                .orElseGet(() -> roleRepository.save(Role.builder()
-                        .name(normalized)
-                        .description("Staff role: " + normalized)
-                        .build()));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Role không tồn tại, hãy chọn role từ danh sách"));
     }
 
     private void ensureEmailAvailable(String email, Long currentId) {

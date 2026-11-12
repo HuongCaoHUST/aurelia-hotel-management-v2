@@ -55,9 +55,7 @@ export function RoomTypes({ onNotice }) {
   return <>
     <div className="page-heading room-types-heading">
       <div>
-        <p className="eyebrow">Hotel operations <span className="heading-dot" /> Room inventory</p>
         <h1>Room type management</h1>
-        <p>View room types and the number of rooms assigned to each type.</p>
       </div>
       <button className="primary-button" type="button" onClick={() => setForm({ ...emptyRoomType })}>+ Add room type</button>
     </div>

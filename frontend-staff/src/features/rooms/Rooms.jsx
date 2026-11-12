@@ -62,9 +62,7 @@ export function Rooms({ onNotice }) {
   return <>
     <div className="page-heading rooms-heading">
       <div>
-        <p className="eyebrow">Hotel operations <span className="heading-dot" /> Room inventory</p>
         <h1>Room management</h1>
-        <p>Manage rooms by number, room type and operational status.</p>
       </div>
       <button className="primary-button" type="button" onClick={() => setFormOpen(true)}>+ Add room</button>
     </div>

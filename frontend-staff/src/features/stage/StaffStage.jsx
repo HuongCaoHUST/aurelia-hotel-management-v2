@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { hasPermission, hasRole, staffPermissions } from '../../app/access.js';
-import { staffApi } from '../../app/api.js';
+import { accessApi, staffApi } from '../../app/api.js';
 import sidebarLogo from '../../logo/main2.png';
 import { Amenities } from '../amenities/Amenities.jsx';
 import { Permissions } from '../permissions/Permissions.jsx';
@@ -36,13 +36,7 @@ const activities = [
 
 function toStaffMember(user) {
   const name = user.fullName || user.email;
-  const role = user.roles?.[0]?.name || 'Staff';
-  const roleLabels = {
-    RECEPTIONIST: 'Receptionist',
-    HOUSEKEEPER: 'Housekeeper',
-    TECHNICIAN: 'Technician',
-    MANAGER: 'Manager',
-  };
+  const role = user.roles?.[0]?.name || 'STAFF';
   const statusLabels = {
     ACTIVE: 'Active',
     PENDING: 'Pending',
@@ -54,7 +48,8 @@ function toStaffMember(user) {
     id: user.id,
     name,
     email: user.email,
-    role: roleLabels[role] || role,
+    roleName: role,
+    role: formatRoleName(role),
     department: user.department || '—',
     status: statusLabels[status] || status,
     initials: name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
@@ -65,13 +60,17 @@ function toStaffMember(user) {
   };
 }
 
-function toRoleName(role) {
-  return {
-    Receptionist: 'RECEPTIONIST',
-    Housekeeper: 'HOUSEKEEPER',
-    Technician: 'TECHNICIAN',
-    Manager: 'MANAGER',
-  }[role] || role.toUpperCase();
+function formatRoleName(roleName) {
+  return String(roleName || '')
+    .toLowerCase()
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function normalizeRoleName(roleName) {
+  return String(roleName || '').trim().replace(/[-\s]+/g, '_').toUpperCase();
 }
 
 function Icon({ name, size = 18 }) {
@@ -176,7 +175,7 @@ export function StaffStage({ user, onLogout }) {
         fullName: name,
         email: form.get('email'),
         department: form.get('department'),
-        roleName: toRoleName(form.get('role')),
+        roleName: form.get('role'),
         enabled: member.status === 'Active',
         status: member.status.toUpperCase(),
       });
@@ -195,7 +194,7 @@ export function StaffStage({ user, onLogout }) {
         fullName: member.name,
         email: member.email,
         department: member.department === '—' ? '' : member.department,
-        roleName: toRoleName(member.role),
+        roleName: member.roleName || normalizeRoleName(member.role),
         enabled: nextStatus === 'Active',
         status: nextStatus.toUpperCase(),
       });
@@ -231,7 +230,7 @@ export function StaffStage({ user, onLogout }) {
 
 function Dashboard({ firstName, setActiveTab, canManageStaffAccounts }) {
   return <>
-    <div className="page-heading dashboard-heading"><div><p className="eyebrow">Wednesday, October 07, 2026 <span className="heading-dot" /> Aurelia Hotel</p><h1>Good morning, {firstName}</h1><p>Here is the operational pulse of your hotel today.</p></div></div>
+    <div className="page-heading dashboard-heading"><div><h1>Good morning, {firstName}</h1></div></div>
     <section className="stat-grid">{stats.map((stat) => <article className="stat-card" key={stat.label}><div className={`stat-icon ${stat.tone}`}><Icon name={stat.icon} size={19} /></div><p>{stat.label}</p><strong>{stat.value}</strong><small className={stat.tone === 'rose' ? 'stat-change attention' : 'stat-change'}>{stat.detail}</small></article>)}</section>
     <div className="dashboard-grid"><section className="panel occupancy-panel"><PanelHeading eyebrow="Performance" title="Occupancy overview"><button className="select-button" type="button">This week <span>⌄</span></button></PanelHeading><div className="chart-wrap"><div className="chart-y-axis"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div><div className="bar-chart">{[['Mon',62],['Tue',76],['Wed',68],['Thu',84],['Fri',91],['Sat',78],['Sun',64]].map(([day, value]) => <div className="bar-column" key={day}><div className="bar-value">{value}%</div><div className="bar-track"><div className="bar-fill" style={{ height: `${value}%` }} /></div><span>{day}</span></div>)}</div></div></section><section className="panel activity-panel"><PanelHeading eyebrow="Live updates" title="Recent activity"><button className="link-button" type="button">View all <Icon name="arrow" size={13} /></button></PanelHeading><div className="activity-list">{activities.map((activity) => <Activity key={activity.title} {...activity} />)}</div></section></div>
     <section className="panel arrivals-panel"><PanelHeading eyebrow="Front desk" title="Today’s arrivals"><button className="link-button" type="button">View reservations <Icon name="arrow" size={13} /></button></PanelHeading><div className="arrival-table"><div className="table-row table-head"><span>Guest</span><span>Room</span><span>Arrival</span><span>Status</span></div>{arrivals.map((arrival) => <div className="table-row" key={arrival.name}><span className="guest-cell"><span className={`avatar avatar-${arrival.color}`}>{arrival.initials}</span><span><strong>{arrival.name}</strong><small>{arrival.detail}</small></span></span><span>{arrival.room}</span><span>{arrival.time}</span><span className={`pill ${arrival.status.toLowerCase()}`}>{arrival.status}</span></div>)}</div></section>
@@ -277,14 +276,65 @@ function StaffAvatar({ member }) {
 }
 
 function Accounts({ staff, total, search, setSearch, statusFilter, setStatusFilter, sortOrder, setSortOrder, onCreate, onEdit, onToggle }) {
-  return <><div className="page-heading accounts-heading"><div><p className="eyebrow">People & access <span className="heading-dot" /> {total} members</p><h1>Staff accounts</h1><p>Manage the people who keep Aurelia Hotel running smoothly.</p></div><button className="primary-button" type="button" onClick={onCreate}><Icon name="plus" size={17} /> Create account</button></div><section className="panel accounts-panel"><div className="accounts-toolbar"><label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, role or email" aria-label="Search staff" /></label><div className="toolbar-actions"><select className="filter-button" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option>All status</option><option>Active</option><option>Pending</option><option>Suspended</option><option>Inactive</option></select><select className="filter-button" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort staff"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></div></div>{staff.length ? <div className="account-table"><div className="account-row account-head"><span>Team member</span><span>Role & department</span><span>Status</span><span>Last active</span><span /></div>{staff.map((member) => <div className="account-row" key={member.id}><span className="guest-cell"><StaffAvatar member={member} /><span><strong>{member.name}</strong><small>{member.email}</small></span></span><span><strong className="role-name">{member.role}</strong><small>{member.department}</small></span><span><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></span><span className="last-active">{member.lastActive}</span><span className="row-actions"><button type="button" className="row-action" onClick={() => onEdit(member)}>Edit</button><button type="button" className="row-action row-action-muted" onClick={() => onToggle(member)}>{member.status === 'Active' ? 'Suspend' : 'Activate'}</button></span></div>)}</div> : <div className="empty-state"><span><Icon name="search" size={20} /></span><h3>No staff accounts found</h3><p>Try a different search or status filter.</p></div>}<p className="table-foot">Showing {staff.length} of {total} staff accounts</p></section></>;
+  return <><div className="page-heading accounts-heading"><div><h1>Staff accounts</h1></div><button className="primary-button" type="button" onClick={onCreate}><Icon name="plus" size={17} /> Create account</button></div><section className="panel accounts-panel"><div className="accounts-toolbar"><label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, role or email" aria-label="Search staff" /></label><div className="toolbar-actions"><select className="filter-button" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option>All status</option><option>Active</option><option>Pending</option><option>Suspended</option><option>Inactive</option></select><select className="filter-button" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort staff"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></div></div>{staff.length ? <div className="account-table"><div className="account-row account-head"><span>Team member</span><span>Role & department</span><span>Status</span><span>Last active</span><span /></div>{staff.map((member) => <div className="account-row" key={member.id}><span className="guest-cell"><StaffAvatar member={member} /><span><strong>{member.name}</strong><small>{member.email}</small></span></span><span><strong className="role-name">{member.role}</strong><small>{member.department}</small></span><span><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></span><span className="last-active">{member.lastActive}</span><span className="row-actions"><button type="button" className="row-action" onClick={() => onEdit(member)}>Edit</button><button type="button" className="row-action row-action-muted" onClick={() => onToggle(member)}>{member.status === 'Active' ? 'Suspend' : 'Activate'}</button></span></div>)}</div> : <div className="empty-state"><span><Icon name="search" size={20} /></span><h3>No staff accounts found</h3><p>Try a different search or status filter.</p></div>}<p className="table-foot">Showing {staff.length} of {total} staff accounts</p></section></>;
 }
 
 function AccountModal({ mode, member, onClose, onSubmit }) {
   const nameParts = member?.name.split(' ') || ['', ''];
   const firstName = member ? nameParts.slice(0, -1).join(' ') : '';
   const lastName = member ? nameParts.at(-1) : '';
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title"><div className="modal-heading"><div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{mode === 'edit' ? 'Edit staff account' : 'Create a staff account'}</h2><p>{mode === 'edit' ? 'Keep this person’s access details up to date.' : 'Set the login credentials for this team member.'}</p></div><button className="close-button" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button></div><form className="account-form" onSubmit={onSubmit} encType="multipart/form-data"><div className="form-row"><label htmlFor="firstName">First name<input id="firstName" name="firstName" defaultValue={firstName} placeholder="Minh" required /></label><label htmlFor="lastName">Last name<input id="lastName" name="lastName" defaultValue={lastName} placeholder="Anh" required /></label></div><label htmlFor="email">Work email<input id="email" name="email" type="email" defaultValue={member?.email || ''} placeholder="name@aureliahotel.com" required /></label>{mode === 'create' && <label htmlFor="password">Password<input id="password" name="password" type="password" minLength="8" maxLength="72" autoComplete="new-password" placeholder="At least 8 characters" required /></label>}{mode === 'create' && <label htmlFor="avatar">Avatar<input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" /><small>JPEG, PNG, GIF or WebP · max 5 MB</small></label>}<div className="form-row"><label htmlFor="department">Department<select id="department" name="department" defaultValue={member?.department || 'Front office'}><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label><label htmlFor="role">Role<select id="role" name="role" defaultValue={member?.role || 'Receptionist'}><option>Receptionist</option><option>Housekeeper</option><option>Manager</option><option>Technician</option></select></label></div><div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit">{mode === 'edit' ? 'Save changes' : 'Create account'}</button></div></form></div></div>;
+  const [roles, setRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(member?.roleName || '');
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [rolesError, setRolesError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    accessApi.roles()
+      .then((roleResponse) => {
+        if (!active) return;
+        const nextRoles = (roleResponse || [])
+          .map((role) => ({ id: role.id, name: String(role.name || '').toUpperCase() }))
+          .filter((role) => role.name && role.name !== 'ADMIN');
+        setRoles(nextRoles);
+        setSelectedRole((current) => current || nextRoles[0]?.name || '');
+      })
+      .catch((error) => {
+        if (active) setRolesError(error.message || 'Unable to load roles.');
+      })
+      .finally(() => {
+        if (active) setRolesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setSelectedRole(member?.roleName || '');
+  }, [member?.id, member?.roleName]);
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
+        <div className="modal-heading">
+          <div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{mode === 'edit' ? 'Edit staff account' : 'Create a staff account'}</h2><p>{mode === 'edit' ? 'Keep this person’s access details up to date.' : 'Set the login credentials for this team member.'}</p></div>
+          <button className="close-button" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+        </div>
+        <form className="account-form" onSubmit={onSubmit} encType="multipart/form-data">
+          <div className="form-row"><label htmlFor="firstName">First name<input id="firstName" name="firstName" defaultValue={firstName} placeholder="Minh" required /></label><label htmlFor="lastName">Last name<input id="lastName" name="lastName" defaultValue={lastName} placeholder="Anh" required /></label></div>
+          <label htmlFor="email">Work email<input id="email" name="email" type="email" defaultValue={member?.email || ''} placeholder="name@aureliahotel.com" required /></label>
+          {mode === 'create' && <label htmlFor="password">Password<input id="password" name="password" type="password" minLength="8" maxLength="72" autoComplete="new-password" placeholder="At least 8 characters" required /></label>}
+          {mode === 'create' && <label htmlFor="avatar">Avatar<input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" /><small>JPEG, PNG, GIF or WebP · max 5 MB</small></label>}
+          <div className="form-row">
+            <label htmlFor="department">Department<select id="department" name="department" defaultValue={member?.department || 'Front office'}><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label>
+            <label htmlFor="role">Role<select id="role" name="role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} disabled={rolesLoading || !roles.length} required><option value="">{rolesLoading ? 'Loading roles…' : rolesError || 'Select a role'}</option>{roles.map((role) => <option value={role.name} key={role.id}>{formatRoleName(role.name)}</option>)}</select></label>
+          </div>
+          <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit" disabled={rolesLoading || !selectedRole}>{mode === 'edit' ? 'Save changes' : 'Create account'}</button></div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function AccessDenied({ fullName, onLogout }) {

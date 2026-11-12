@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Objects;
+
 @Configuration
 @RequiredArgsConstructor
 public class InitUserConfig {
@@ -42,6 +44,10 @@ public class InitUserConfig {
                             .name("ADMIN")
                             .description("Quản trị viên hệ thống")
                             .build()));
+            ensureRole(roleRepository, "MANAGER", "Oversees daily hotel performance");
+            ensureRole(roleRepository, "RECEPTIONIST", "Reservations and guest arrivals");
+            ensureRole(roleRepository, "HOUSEKEEPER", "Room readiness and service");
+            ensureRole(roleRepository, "TECHNICIAN", "Repairs and room operations");
 
             Permission dashboardView = permissionRepository.findByCode("DASHBOARD_VIEW")
                     .orElseGet(() -> permissionRepository.save(Permission.builder()
@@ -79,12 +85,26 @@ public class InitUserConfig {
                             .name("Update permissions")
                             .description("Assign permissions to access roles")
                             .build()));
+            Permission manageRoomTypes = permissionRepository.findByCode("ROOM_MANAGE_TYPES")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROOM_MANAGE_TYPES")
+                            .name("Manage room types")
+                            .description("Create and update hotel room types")
+                            .build()));
+            Permission manageRooms = permissionRepository.findByCode("ROOM_MANAGE_ROOMS")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROOM_MANAGE_ROOMS")
+                            .name("Manage rooms")
+                            .description("View and create hotel rooms")
+                            .build()));
             adminRole.getPermissions().add(dashboardView);
             adminRole.getPermissions().add(manageRoles);
             adminRole.getPermissions().add(createRole);
             adminRole.getPermissions().add(updateRole);
             adminRole.getPermissions().add(deleteRole);
             adminRole.getPermissions().add(managePermissions);
+            adminRole.getPermissions().add(manageRoomTypes);
+            adminRole.getPermissions().add(manageRooms);
             roleRepository.save(adminRole);
 
             userRepository.findByEmail(adminEmail).ifPresentOrElse(user -> {
@@ -116,5 +136,18 @@ public class InitUserConfig {
         return password.startsWith("$2a$")
                 || password.startsWith("$2b$")
                 || password.startsWith("$2y$");
+    }
+
+    private Role ensureRole(RoleRepository roleRepository, String name, String description) {
+        Role role = roleRepository.findByName(name)
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name(name)
+                        .description(description)
+                        .build()));
+        if (!Objects.equals(role.getDescription(), description)) {
+            role.setDescription(description);
+            role = roleRepository.save(role);
+        }
+        return role;
     }
 }
