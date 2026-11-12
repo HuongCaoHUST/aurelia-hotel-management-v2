@@ -3,6 +3,7 @@ import { hasPermission, hasRole, staffPermissions } from '../../app/access.js';
 import { staffApi } from '../../app/api.js';
 import sidebarLogo from '../../logo/main2.png';
 import { Amenities } from '../amenities/Amenities.jsx';
+import { RoomTypes } from '../rooms/RoomTypes.jsx';
 
 const navItems = [
   { id: 'dashboard', label: 'Overview', icon: 'grid', permission: staffPermissions.viewDashboard },
@@ -118,7 +119,7 @@ export function StaffStage({ user, onLogout }) {
     if (!canManageStaffAccounts) return;
     staffApi.list()
       .then((members) => setStaff(members.map(toStaffMember)))
-      .catch((error) => showNotice(error.message || 'Unable to load staff accounts.'));
+      .catch((error) => showNotice(error.message || 'Unable to load staff accounts.', 'error'));
   }, [canManageStaffAccounts]);
 
   const filteredStaff = useMemo(() => {
@@ -135,8 +136,8 @@ export function StaffStage({ user, onLogout }) {
     });
   }, [search, staff, statusFilter, sortOrder]);
 
-  function showNotice(message) {
-    setNotice(message);
+  function showNotice(message, type = 'success') {
+    setNotice({ message, type });
     window.setTimeout(() => setNotice(''), 3500);
   }
 
@@ -158,7 +159,7 @@ export function StaffStage({ user, onLogout }) {
       setModal(null);
       showNotice('Staff account created.');
     } catch (error) {
-      showNotice(error.message || 'Unable to create staff account.');
+      showNotice(error.message || 'Unable to create staff account.', 'error');
     }
   }
 
@@ -180,7 +181,7 @@ export function StaffStage({ user, onLogout }) {
       setModal(null);
       showNotice('Staff account updated.');
     } catch (error) {
-      showNotice(error.message || 'Unable to update staff account.');
+      showNotice(error.message || 'Unable to update staff account.', 'error');
     }
   }
 
@@ -198,7 +199,7 @@ export function StaffStage({ user, onLogout }) {
       setStaff((current) => current.map((item) => item.id === member.id ? toStaffMember(updatedUser) : item));
       showNotice(`${member.name} is now ${nextStatus.toLowerCase()}.`);
     } catch (error) {
-      showNotice(error.message || 'Unable to update staff status.');
+      showNotice(error.message || 'Unable to update staff status.', 'error');
     }
   }
 
@@ -211,31 +212,29 @@ export function StaffStage({ user, onLogout }) {
       <aside className={`admin-sidebar ${isSidebarOpen ? 'is-open' : ''}`}>
         <div className="sidebar-brand"><img className="sidebar-logo" src={sidebarLogo} alt="Aurelia Hotel" /></div>
         <div className="sidebar-section-label">Workspace</div>
-        <nav className="admin-nav" aria-label="Staff navigation">{accessibleNavItems.map((item) => <div className={`nav-group ${item.id === 'accounts' && activeTab === 'accounts' ? 'is-expanded' : ''}`} key={item.id}><button className={activeTab === item.id ? 'active' : ''} type="button" onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}><span className="nav-icon"><Icon name={item.icon} size={18} /></span><span>{item.label}</span>{item.id === 'accounts' && <span className="nav-chevron"><Icon name="chevron" size={15} /></span>}</button>{item.id === 'accounts' && activeTab === 'accounts' && <ul className="sidebar-subnav" aria-label="Staff account sections"><li><button className={accountSection === 'list' ? 'active' : ''} type="button" onClick={() => setAccountSection('list')}>Staff list</button></li><li><button className={accountSection === 'permissions' ? 'active' : ''} type="button" onClick={() => setAccountSection('permissions')}>Permissions</button></li><li><button className={accountSection === 'audit' ? 'active' : ''} type="button" onClick={() => setAccountSection('audit')}>Access log</button></li></ul>}</div>)}</nav>
+        <nav className="admin-nav" aria-label="Staff navigation">{accessibleNavItems.map((item) => <div className={`nav-group ${['accounts', 'rooms'].includes(item.id) && activeTab === item.id ? 'is-expanded' : ''}`} key={item.id}><button className={activeTab === item.id ? 'active' : ''} type="button" onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}><span className="nav-icon"><Icon name={item.icon} size={18} /></span><span>{item.label}</span>{['accounts', 'rooms'].includes(item.id) && <span className="nav-chevron"><Icon name="chevron" size={15} /></span>}</button>{item.id === 'accounts' && activeTab === 'accounts' && <ul className="sidebar-subnav" aria-label="Staff account sections"><li><button className={accountSection === 'list' ? 'active' : ''} type="button" onClick={() => setAccountSection('list')}>Staff list</button></li><li><button className={accountSection === 'permissions' ? 'active' : ''} type="button" onClick={() => setAccountSection('permissions')}>Permissions</button></li><li><button className={accountSection === 'audit' ? 'active' : ''} type="button" onClick={() => setAccountSection('audit')}>Access log</button></li></ul>}{item.id === 'rooms' && activeTab === 'rooms' && <ul className="sidebar-subnav" aria-label="Room management sections"><li><button className="active" type="button" onClick={() => { setActiveTab('rooms'); setSidebarOpen(false); }}>Room type</button></li></ul>}</div>)}</nav>
         <div className="sidebar-bottom"><div className="sidebar-help"><span>?</span><div><strong>Need help?</strong><small>Contact administrator</small></div></div></div>
       </aside>
 
       <main className="admin-main">
         <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : activeTab === 'rooms' ? 'Room management' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-expanded={isProfileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>⌄</button>{isProfileMenuOpen && <div className="profile-menu"><button type="button" onClick={() => { setProfileMenuOpen(false); onLogout(); }}>Đăng xuất</button></div>}</div></div></header>
-        <div className="admin-content">{notice && <div className="success-notice" role="status"><Icon name="check" size={16} />{notice}</div>}{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'rooms' && hasPermission(user, staffPermissions.manageRooms) ? <RoomManagement /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sortOrder={sortOrder} setSortOrder={setSortOrder} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={toggleStatus} />}</div>
+        <div className="admin-content">{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'rooms' && hasPermission(user, staffPermissions.manageRooms) ? <RoomTypes onNotice={showNotice} /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sortOrder={sortOrder} setSortOrder={setSortOrder} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={toggleStatus} />}</div>
       </main>
       {modal && <AccountModal mode={modal.type} member={modal.member} onClose={() => setModal(null)} onSubmit={modal.type === 'edit' ? updateMember : handleCreateAccount} />}
+      {notice && <div className={`toast-notice ${notice.type === 'error' ? 'is-error' : 'is-success'}`} role={notice.type === 'error' ? 'alert' : 'status'}><Icon name={notice.type === 'error' ? 'alert' : 'check'} size={16} /><span>{notice.message}</span></div>}
     </div>
   );
 }
 
 function Dashboard({ firstName, setActiveTab, canManageStaffAccounts }) {
   return <>
-    <div className="page-heading"><div><p className="eyebrow">Wednesday, October 07, 2026 <span className="heading-dot" /> Aurelia Hotel</p><h1>Good morning, {firstName}</h1><p>Here is the operational pulse of your hotel today.</p></div></div>
+    <div className="page-heading dashboard-heading"><div><p className="eyebrow">Wednesday, October 07, 2026 <span className="heading-dot" /> Aurelia Hotel</p><h1>Good morning, {firstName}</h1><p>Here is the operational pulse of your hotel today.</p></div></div>
     <section className="stat-grid">{stats.map((stat) => <article className="stat-card" key={stat.label}><div className={`stat-icon ${stat.tone}`}><Icon name={stat.icon} size={19} /></div><p>{stat.label}</p><strong>{stat.value}</strong><small className={stat.tone === 'rose' ? 'stat-change attention' : 'stat-change'}>{stat.detail}</small></article>)}</section>
     <div className="dashboard-grid"><section className="panel occupancy-panel"><PanelHeading eyebrow="Performance" title="Occupancy overview"><button className="select-button" type="button">This week <span>⌄</span></button></PanelHeading><div className="chart-wrap"><div className="chart-y-axis"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div><div className="bar-chart">{[['Mon',62],['Tue',76],['Wed',68],['Thu',84],['Fri',91],['Sat',78],['Sun',64]].map(([day, value]) => <div className="bar-column" key={day}><div className="bar-value">{value}%</div><div className="bar-track"><div className="bar-fill" style={{ height: `${value}%` }} /></div><span>{day}</span></div>)}</div></div></section><section className="panel activity-panel"><PanelHeading eyebrow="Live updates" title="Recent activity"><button className="link-button" type="button">View all <Icon name="arrow" size={13} /></button></PanelHeading><div className="activity-list">{activities.map((activity) => <Activity key={activity.title} {...activity} />)}</div></section></div>
     <section className="panel arrivals-panel"><PanelHeading eyebrow="Front desk" title="Today’s arrivals"><button className="link-button" type="button">View reservations <Icon name="arrow" size={13} /></button></PanelHeading><div className="arrival-table"><div className="table-row table-head"><span>Guest</span><span>Room</span><span>Arrival</span><span>Status</span></div>{arrivals.map((arrival) => <div className="table-row" key={arrival.name}><span className="guest-cell"><span className={`avatar avatar-${arrival.color}`}>{arrival.initials}</span><span><strong>{arrival.name}</strong><small>{arrival.detail}</small></span></span><span>{arrival.room}</span><span>{arrival.time}</span><span className={`pill ${arrival.status.toLowerCase()}`}>{arrival.status}</span></div>)}</div></section>
   </>;
 }
 
-function RoomManagement() {
-  return <><div className="page-heading"><div><p className="eyebrow">Hotel operations <span className="heading-dot" /> Rooms</p><h1>Room management</h1><p>Manage room inventory, availability and housekeeping status from one workspace.</p></div></div><section className="panel empty-state room-management-empty"><span><Icon name="bed" size={22} /></span><h3>Room management workspace</h3><p>The room inventory view is ready. Room data and room actions will be connected here next.</p></section></>;
-}
 
 function PanelHeading({ eyebrow, title, children }) { return <div className="panel-heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>{children}</div>; }
 function Activity({ icon, title, detail, time, tone }) { return <div className="activity-item"><span className={`activity-icon ${tone}`}><Icon name={icon} size={14} /></span><div><strong>{title}</strong><small>{detail}</small></div><time>{time}</time></div>; }

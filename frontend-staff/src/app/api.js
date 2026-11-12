@@ -20,6 +20,10 @@ export const staffApi = {
   update: (id, data) => http.put(`/auth/staff/${id}`, data),
   avatar: (id) => http.getBlob(`/auth/staff/${id}/avatar`),
 };
+export const roomTypeApi = {
+  list: () => http.get('/room-types'),
+  create: (data) => http.post('/room-types', data),
+};
 export const amenityApi = {
   groups: () => http.get('/amenities/groups'),
   createGroup: (data) => http.post('/amenities/groups', data),

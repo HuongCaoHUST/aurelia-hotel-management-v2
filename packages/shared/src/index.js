@@ -19,7 +19,24 @@ export function createHttpClient({ baseUrl = '', getAccessToken } = {}) {
       },
     });
     if (!response.ok) {
-      const error = new Error(`Request failed: ${response.status}`);
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        // Some proxy and empty responses do not contain a JSON error body.
+      }
+      const fallbackMessages = {
+        400: 'Dữ liệu không hợp lệ.',
+        401: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        403: 'Bạn không có quyền thực hiện thao tác này.',
+        404: 'Không tìm thấy dữ liệu yêu cầu.',
+        409: 'Dữ liệu đã tồn tại hoặc đang bị xung đột.',
+        413: 'Tệp tải lên vượt quá dung lượng cho phép.',
+        415: 'Định dạng tệp không được hỗ trợ.',
+        500: 'Máy chủ đang gặp lỗi. Vui lòng thử lại.',
+        502: 'Máy chủ đang khởi động hoặc tạm thời không khả dụng.',
+      };
+      const error = new Error(payload?.message || payload?.detail || fallbackMessages[response.status] || 'Không thể hoàn tất yêu cầu.');
       error.status = response.status;
       throw error;
     }

@@ -18,7 +18,7 @@ export function Amenities({ onNotice }) {
       setGroups(groupData);
       setAmenities(amenityData);
     } catch (error) {
-      onNotice(error.message || 'Unable to load amenities.');
+      onNotice(error.message || 'Unable to load amenities.', 'error');
     } finally {
       setLoading(false);
     }
@@ -35,7 +35,7 @@ export function Amenities({ onNotice }) {
       setGroups((current) => groupForm.id ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved]);
       setGroupForm(null);
       onNotice('Amenity group saved.');
-    } catch (error) { onNotice(error.message || 'Unable to save amenity group.'); }
+    } catch (error) { onNotice(error.message || 'Unable to save amenity group.', 'error'); }
   }
 
   async function saveAmenity(event) {
@@ -46,7 +46,7 @@ export function Amenities({ onNotice }) {
       setAmenities((current) => amenityForm.id ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved]);
       setAmenityForm(null);
       onNotice('Amenity saved.');
-    } catch (error) { onNotice(error.message || 'Unable to save amenity.'); }
+    } catch (error) { onNotice(error.message || 'Unable to save amenity.', 'error'); }
   }
 
   async function toggleGroup(group) {
@@ -54,19 +54,19 @@ export function Amenities({ onNotice }) {
       const saved = await amenityApi.updateGroup(group.id, { name: group.name, description: group.description || '', active: !group.active });
       setGroups((current) => current.map((item) => item.id === saved.id ? saved : item));
       onNotice(`Group ${saved.active ? 'activated' : 'deactivated'}.`);
-    } catch (error) { onNotice(error.message || 'Unable to update group status.'); }
+    } catch (error) { onNotice(error.message || 'Unable to update group status.', 'error'); }
   }
 
   async function removeGroup(group) {
     if (!window.confirm(`Delete the ${group.name} group?`)) return;
     try { await amenityApi.deleteGroup(group.id); setGroups((current) => current.filter((item) => item.id !== group.id)); onNotice('Amenity group deleted.'); }
-    catch (error) { onNotice(error.message || 'Unable to delete group.'); }
+    catch (error) { onNotice(error.message || 'Unable to delete group.', 'error'); }
   }
 
   async function removeAmenity(amenity) {
     if (!window.confirm(`Delete ${amenity.name}?`)) return;
     try { await amenityApi.delete(amenity.id); setAmenities((current) => current.filter((item) => item.id !== amenity.id)); onNotice('Amenity deleted.'); }
-    catch (error) { onNotice(error.message || 'Unable to delete amenity.'); }
+    catch (error) { onNotice(error.message || 'Unable to delete amenity.', 'error'); }
   }
 
   return <>
