@@ -624,6 +624,19 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .danger-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 17px; border: 1px solid #b86c63; color: #fff; background: #b86c63; font-size: 12px; font-weight: 600; transition: .2s ease; }
 .danger-button:hover:not(:disabled) { border-color: #9f554d; background: #9f554d; }
 .danger-button:disabled, .secondary-button:disabled { cursor: not-allowed; opacity: .65; }
+.status-confirm-modal { width: min(100%, 500px); }
+.status-confirm-summary { display: flex; align-items: center; gap: 12px; margin-top: -4px; padding: 14px; border: 1px solid var(--line); background: var(--surface-soft); }
+.status-confirm-summary .avatar { width: 72px; height: 72px; font-size: 21px; }
+.status-confirm-summary .avatar-image { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.status-confirm-identity { min-width: 0; flex: 1; }
+.status-confirm-identity strong, .status-confirm-identity small, .status-confirm-identity > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-confirm-identity strong { color: var(--ink); font-size: 20px; font-weight: 600; }
+.status-confirm-identity small { margin-top: 5px; color: var(--gold-dark); font-size: 14px; font-weight: 600; }
+.status-confirm-identity > span { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.status-confirm-icon { display: grid; width: 38px; height: 38px; flex-shrink: 0; place-items: center; border-radius: 50%; }
+.status-confirm-summary.is-warning .status-confirm-icon { color: #a7625d; background: #f5e4e1; }
+.status-confirm-summary.is-safe .status-confirm-icon { color: var(--teal); background: #e2f0ed; }
+.status-confirm-modal .form-actions { margin-top: 22px; }
 @media (max-width: 720px) { .delete-role-modal { padding: 24px 19px; } }
 
 @media (max-width: 1180px) {
