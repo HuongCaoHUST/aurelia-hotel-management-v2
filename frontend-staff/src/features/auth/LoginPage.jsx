@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { authService } from '../../app/api.js';
+import logo from '../../logo/main.png';
 
 export function LoginPage({ onLogin, Layout }) {
   const [email, setEmail] = useState('');
@@ -25,13 +26,7 @@ export function LoginPage({ onLogin, Layout }) {
   return (
     <Layout>
       <div className="login-panel-inner">
-        <div className="brand brand-dark">
-          <span className="brand-mark">A</span>
-          <span>
-            <strong>AURELIA</strong>
-            <small>STAFF PORTAL</small>
-          </span>
-        </div>
+        <img className="login-logo" src={logo} alt="Aurelia Hotel" />
 
         <div className="login-heading">
           <p className="eyebrow">Welcome back</p>

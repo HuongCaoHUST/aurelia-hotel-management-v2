@@ -13,10 +13,14 @@ export function hasRole(user, roleName) {
 }
 
 export function getPermissionCodes(user) {
-  return (user?.roles || []).flatMap((role) => {
+  const directPermissions = (user?.permissions || []).map((permission) => (
+    typeof permission === 'string' ? permission : permission?.code
+  )).filter(Boolean);
+  const rolePermissions = (user?.roles || []).flatMap((role) => {
     if (typeof role === 'string') return [];
     return (role?.permissions || []).map((permission) => permission?.code).filter(Boolean);
   });
+  return [...new Set([...directPermissions, ...rolePermissions])];
 }
 
 export function hasPermission(user, permissionCode) {

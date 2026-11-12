@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { hasPermission, hasRole, staffPermissions } from '../../app/access.js';
 import { staffApi } from '../../app/api.js';
+import sidebarLogo from '../../logo/main2.png';
 import { Amenities } from '../amenities/Amenities.jsx';
 
 const navItems = [
@@ -94,6 +95,7 @@ export function StaffStage({ user, onLogout }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All status');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
   const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Staff member';
@@ -183,14 +185,14 @@ export function StaffStage({ user, onLogout }) {
   return (
     <div className="admin-shell">
       <aside className={`admin-sidebar ${isSidebarOpen ? 'is-open' : ''}`}>
-        <div className="sidebar-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div>
+        <div className="sidebar-brand"><img className="sidebar-logo" src={sidebarLogo} alt="Aurelia Hotel" /></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="admin-nav" aria-label="Staff navigation">{accessibleNavItems.map((item) => <div className={`nav-group ${item.id === 'accounts' && activeTab === 'accounts' ? 'is-expanded' : ''}`} key={item.id}><button className={activeTab === item.id ? 'active' : ''} type="button" onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}><span className="nav-icon"><Icon name={item.icon} size={18} /></span><span>{item.label}</span>{item.id === 'accounts' && <span className="nav-chevron"><Icon name="chevron" size={15} /></span>}</button>{item.id === 'accounts' && activeTab === 'accounts' && <ul className="sidebar-subnav" aria-label="Staff account sections"><li><button className={accountSection === 'list' ? 'active' : ''} type="button" onClick={() => setAccountSection('list')}>Staff list</button></li><li><button className={accountSection === 'permissions' ? 'active' : ''} type="button" onClick={() => setAccountSection('permissions')}>Permissions</button></li><li><button className={accountSection === 'audit' ? 'active' : ''} type="button" onClick={() => setAccountSection('audit')}>Access log</button></li></ul>}</div>)}</nav>
-        <div className="sidebar-bottom"><div className="sidebar-help"><span>?</span><div><strong>Need help?</strong><small>Contact administrator</small></div></div><button className="sidebar-signout" type="button" onClick={onLogout}><Icon name="logout" size={17} /><span>Sign out</span></button></div>
+        <div className="sidebar-bottom"><div className="sidebar-help"><span>?</span><div><strong>Need help?</strong><small>Contact administrator</small></div></div></div>
       </aside>
 
       <main className="admin-main">
-        <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><span className="chevron">⌄</span></div></div></header>
+        <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-expanded={isProfileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>⌄</button>{isProfileMenuOpen && <div className="profile-menu"><button type="button" onClick={() => { setProfileMenuOpen(false); onLogout(); }}>Đăng xuất</button></div>}</div></div></header>
         <div className="admin-content">{notice && <div className="success-notice" role="status"><Icon name="check" size={16} />{notice}</div>}{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={toggleStatus} />}</div>
       </main>
       {modal && <AccountModal mode={modal.type} member={modal.member} onClose={() => setModal(null)} onSubmit={modal.type === 'edit' ? updateMember : handleCreateAccount} />}

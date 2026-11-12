@@ -40,8 +40,18 @@ export function createAuthService({ api, storage }) {
   return {
     login: async (data) => {
       const result = await api.login(data);
-      if (result?.accessToken) storage.setAccessToken(result.accessToken);
-      return result;
+      const accessToken = result?.accessToken || result?.token;
+      if (accessToken) storage.setAccessToken(accessToken);
+
+      return {
+        ...result,
+        accessToken,
+        user: result?.user || {
+          fullName: result?.fullName,
+          roles: result?.roles || [],
+          permissions: result?.permissions || [],
+        },
+      };
     },
     currentUser: () => api.me(),
     logout: () => storage.clear(),

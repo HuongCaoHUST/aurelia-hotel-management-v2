@@ -1,8 +1,10 @@
 package com.aurelia.hotelmanager.config;
 
 import com.aurelia.hotelmanager.model.AccountStatus;
+import com.aurelia.hotelmanager.model.Permission;
 import com.aurelia.hotelmanager.model.Role;
 import com.aurelia.hotelmanager.model.User;
+import com.aurelia.hotelmanager.repository.PermissionRepository;
 import com.aurelia.hotelmanager.repository.UserRepository;
 import com.aurelia.hotelmanager.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,13 +34,30 @@ public class InitUserConfig {
 
     @Bean
     public CommandLineRunner initializeUsers(UserRepository userRepository,
-                                             RoleRepository roleRepository) {
+                                             RoleRepository roleRepository,
+                                             PermissionRepository permissionRepository) {
         return args -> {
             Role adminRole = roleRepository.findByName("ADMIN")
                     .orElseGet(() -> roleRepository.save(Role.builder()
                             .name("ADMIN")
                             .description("Quản trị viên hệ thống")
                             .build()));
+
+            Permission dashboardView = permissionRepository.findByCode("DASHBOARD_VIEW")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("DASHBOARD_VIEW")
+                            .name("View dashboard")
+                            .description("View the staff dashboard")
+                            .build()));
+            Permission manageRoles = permissionRepository.findByCode("ROLE_MANAGE_ROLES")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ROLE_MANAGE_ROLES")
+                            .name("Manage staff accounts")
+                            .description("Manage staff accounts and access")
+                            .build()));
+            adminRole.getPermissions().add(dashboardView);
+            adminRole.getPermissions().add(manageRoles);
+            roleRepository.save(adminRole);
 
             userRepository.findByEmail(adminEmail).ifPresentOrElse(user -> {
                 user.getRoles().add(adminRole);
