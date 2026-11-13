@@ -27,25 +27,25 @@ public class AccessControlController {
     private final AccessControlService accessControlService;
 
     @GetMapping("/roles")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAnyAuthority('ROLE_MANAGE_ROLES', 'ROLE_MANAGE_PERMISSIONS')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGE_ROLES', 'ROLE_MANAGE_PERMISSIONS')")
     public List<RoleAccessResponse> listRoles() {
         return accessControlService.listRoles();
     }
 
     @GetMapping("/permissions")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAnyAuthority('ROLE_MANAGE_ROLES', 'ROLE_MANAGE_PERMISSIONS')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGE_ROLES', 'ROLE_MANAGE_PERMISSIONS')")
     public List<PermissionAccessResponse> listPermissions() {
         return accessControlService.listPermissions();
     }
 
     @PostMapping("/roles")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROLE_CREATE')")
+    @PreAuthorize("hasAuthority('ROLE_CREATE')")
     public RoleAccessResponse createRole(@Valid @RequestBody RoleUpsertRequest request) {
         return accessControlService.createRole(request.name(), request.description(), request.permissionIds());
     }
 
     @PutMapping("/roles/{roleId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROLE_UPDATE')")
+    @PreAuthorize("hasAuthority('ROLE_UPDATE')")
     public RoleAccessResponse updateRole(
             @PathVariable Long roleId,
             @Valid @RequestBody RoleUpsertRequest request) {
@@ -53,13 +53,13 @@ public class AccessControlController {
     }
 
     @DeleteMapping("/roles/{roleId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROLE_DELETE')")
+    @PreAuthorize("hasAuthority('ROLE_DELETE')")
     public void deleteRole(@PathVariable Long roleId) {
         accessControlService.deleteRole(roleId);
     }
 
     @PutMapping("/roles/{roleId}/permissions")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROLE_MANAGE_PERMISSIONS')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE_PERMISSIONS')")
     public RoleAccessResponse replaceRolePermissions(
             @PathVariable Long roleId,
             @Valid @RequestBody RolePermissionsUpdateRequest request) {

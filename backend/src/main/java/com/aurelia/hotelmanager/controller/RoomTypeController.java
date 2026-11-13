@@ -22,7 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/room-types")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROOM_MANAGE_TYPES')")
+@PreAuthorize("hasAuthority('ROOM_MANAGE_TYPES')")
 public class RoomTypeController {
 
     private final RoomTypeService roomTypeService;

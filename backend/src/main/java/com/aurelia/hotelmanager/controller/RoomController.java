@@ -31,7 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/rooms")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROOM_MANAGE_ROOMS')")
+@PreAuthorize("hasAuthority('ROOM_MANAGE_ROOMS')")
 public class RoomController {
 
     private final RoomService roomService;

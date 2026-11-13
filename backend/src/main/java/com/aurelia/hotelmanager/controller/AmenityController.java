@@ -24,7 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/amenities")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROLE_MANAGE_ROLES')")
+@PreAuthorize("hasAuthority('ROLE_MANAGE_ROLES')")
 public class AmenityController {
 
     private final AmenityService amenityService;

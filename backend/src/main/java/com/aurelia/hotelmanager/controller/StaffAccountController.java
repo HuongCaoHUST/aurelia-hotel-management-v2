@@ -34,7 +34,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth/staff")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('ROLE_MANAGE_ROLES')")
+@PreAuthorize("hasAuthority('ROLE_MANAGE_ROLES')")
 public class StaffAccountController {
 
     private final StaffAccountService staffAccountService;
