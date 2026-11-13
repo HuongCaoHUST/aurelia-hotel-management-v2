@@ -34,6 +34,20 @@ const activities = [
   { icon: 'user', title: 'New staff account', detail: 'Lê Hoàng Nam · Active', time: '2 hrs ago', tone: 'blue' },
 ];
 
+function getStaffNavigationKey(user) {
+  const identity = user?.id || user?.email || 'default';
+  return `aurelia.staff.navigation.${encodeURIComponent(String(identity))}`;
+}
+
+function readStaffNavigation(key) {
+  try {
+    const saved = window.localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
 function toStaffMember(user) {
   const name = user.fullName || user.email;
   const role = user.roles?.[0]?.name || 'STAFF';
@@ -102,8 +116,18 @@ export function StaffStage({ user, onLogout }) {
   const canManageStaffAccounts = isAdmin && hasPermission(user, staffPermissions.manageStaffAccounts);
   const canManageAmenities = isAdmin && hasPermission(user, staffPermissions.manageAmenities);
   const canManageRooms = isAdmin && hasPermission(user, staffPermissions.manageRooms);
-  const [activeTab, setActiveTab] = useState(() => canViewDashboard ? 'dashboard' : 'accounts');
-  const [accountSection, setAccountSection] = useState('list');
+  const accessibleNavItems = navItems.filter((item) => hasPermission(user, item.permission));
+  const navigationKey = getStaffNavigationKey(user);
+  const savedNavigation = readStaffNavigation(navigationKey);
+  const canRestoreTab = (tab) => ['dashboard', 'accounts', 'rooms', 'room-list', 'amenities'].includes(tab)
+    && (tab === 'dashboard' ? canViewDashboard : tab === 'accounts' ? canManageStaffAccounts : tab === 'amenities' ? canManageAmenities : canManageRooms);
+  const [activeTab, setActiveTab] = useState(() => canRestoreTab(savedNavigation?.activeTab)
+    ? savedNavigation.activeTab
+    : canViewDashboard ? 'dashboard' : accessibleNavItems[0]?.id || 'accounts');
+  const [accountSection, setAccountSection] = useState(() => savedNavigation?.activeTab === 'accounts'
+    && ['list', 'permissions', 'audit'].includes(savedNavigation.accountSection)
+    ? savedNavigation.accountSection
+    : 'list');
   const [staff, setStaff] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All status');
@@ -116,7 +140,14 @@ export function StaffStage({ user, onLogout }) {
   const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Staff member';
   const role = user?.roles?.[0]?.name || user?.roles?.[0] || 'Staff administrator';
   const firstName = fullName.split(' ')[0];
-  const accessibleNavItems = navItems.filter((item) => hasPermission(user, item.permission));
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(navigationKey, JSON.stringify({ activeTab, accountSection }));
+    } catch {
+      // Navigation persistence is optional when storage is unavailable.
+    }
+  }, [activeTab, accountSection, navigationKey]);
 
   useEffect(() => {
     if (!canManageStaffAccounts) return;
@@ -240,9 +271,9 @@ export function StaffStage({ user, onLogout }) {
 
       <main className="admin-main">
         <header className="admin-topbar"><button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen((open) => !open)}><Icon name="menu" /></button><div className="mobile-brand brand brand-dark"><span className="brand-mark">A</span><span><strong>AURELIA</strong><small>HOTEL OPERATIONS</small></span></div><div className="breadcrumb"><span>Staff portal</span><b>/</b><strong>{activeTab === 'dashboard' ? 'Overview' : activeTab === 'amenities' ? 'Amenities' : activeTab === 'room-list' ? 'Rooms' : activeTab === 'rooms' ? 'Room type' : accountSection === 'permissions' ? 'Permissions' : accountSection === 'audit' ? 'Access log' : 'Staff accounts'}</strong></div><div className="topbar-actions"><button className="notification-button" type="button" aria-label="Notifications"><Icon name="bell" size={19} /><i>3</i></button><div className="topbar-profile"><span className="avatar avatar-gold">{fullName.slice(0, 2).toUpperCase()}</span><span><strong>{fullName}</strong><small>{role}</small></span><button className="chevron profile-menu-toggle" type="button" aria-label="Mở menu tài khoản" aria-haspopup="menu">⌄</button><div className="profile-menu" role="menu"><button type="button" onClick={onLogout}>Đăng xuất</button></div></div></div></header>
-        <div className="admin-content">{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'room-list' && canManageRooms ? <Rooms onNotice={showNotice} /> : activeTab === 'rooms' && canManageRooms ? <RoomTypes onNotice={showNotice} /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : activeTab === 'accounts' && accountSection === 'permissions' && canManageStaffAccounts ? <Permissions onNotice={(message, type) => showNotice(message, type)} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sortOrder={sortOrder} setSortOrder={setSortOrder} onCreate={() => setModal({ type: 'create' })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={requestStatusChange} statusUpdatingId={statusUpdatingId} />}</div>
+      <div className="admin-content">{activeTab === 'dashboard' && canViewDashboard ? <Dashboard firstName={firstName} setActiveTab={setActiveTab} canManageStaffAccounts={canManageStaffAccounts} /> : activeTab === 'room-list' && canManageRooms ? <Rooms onNotice={showNotice} /> : activeTab === 'rooms' && canManageRooms ? <RoomTypes onNotice={showNotice} /> : activeTab === 'amenities' && canManageAmenities ? <Amenities onNotice={showNotice} /> : activeTab === 'accounts' && accountSection === 'permissions' && canManageStaffAccounts ? <Permissions onNotice={(message, type) => showNotice(message, type)} /> : canManageStaffAccounts && <Accounts staff={filteredStaff} total={staff.length} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sortOrder={sortOrder} setSortOrder={setSortOrder} onCreate={() => setModal({ type: 'create' })} onView={(member) => setModal({ type: 'view', member })} onEdit={(member) => setModal({ type: 'edit', member })} onToggle={requestStatusChange} statusUpdatingId={statusUpdatingId} />}</div>
       </main>
-      {modal && <AccountModal mode={modal.type} member={modal.member} onClose={() => setModal(null)} onSubmit={modal.type === 'edit' ? updateMember : handleCreateAccount} />}
+      {modal && <AccountModal mode={modal.type} member={modal.member} onClose={() => setModal(null)} onSubmit={modal.type === 'edit' ? updateMember : modal.type === 'create' ? handleCreateAccount : undefined} />}
       {statusConfirmMember && <StatusConfirmModal member={statusConfirmMember} isSubmitting={statusUpdatingId === statusConfirmMember.id} onClose={() => statusUpdatingId || setStatusConfirmMember(null)} onConfirm={() => toggleStatus(statusConfirmMember)} />}
       {notice && <div className={`toast-notice ${notice.type === 'error' ? 'is-error' : 'is-success'}`} role={notice.type === 'error' ? 'alert' : 'status'}><Icon name={notice.type === 'error' ? 'alert' : 'check'} size={16} /><span>{notice.message}</span></div>}
     </div>
@@ -296,11 +327,12 @@ function StaffAvatar({ member }) {
   return <span className={`avatar avatar-${member.color}`}>{source ? <img className="avatar-image" src={source} alt="" /> : member.initials}</span>;
 }
 
-function Accounts({ staff, total, search, setSearch, statusFilter, setStatusFilter, sortOrder, setSortOrder, onCreate, onEdit, onToggle, statusUpdatingId }) {
-  return <><div className="page-heading accounts-heading"><div><h1>Staff accounts</h1></div><button className="primary-button" type="button" onClick={onCreate}><Icon name="plus" size={17} /> Create account</button></div><section className="panel accounts-panel"><div className="accounts-toolbar"><label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, role or email" aria-label="Search staff" /></label><div className="toolbar-actions"><select className="filter-button" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option>All status</option><option>Active</option><option>Pending</option><option>Suspended</option><option>Inactive</option></select><select className="filter-button" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort staff"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></div></div>{staff.length ? <div className="account-table"><div className="account-row account-head"><span>Team member</span><span>Role & department</span><span>Status</span><span>Last active</span><span /></div>{staff.map((member) => <div className="account-row" key={member.id}><span className="guest-cell"><StaffAvatar member={member} /><span><strong>{member.name}</strong><small>{member.email}</small></span></span><span><strong className="role-name">{member.role}</strong><small>{member.department}</small></span><span><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></span><span className="last-active">{member.lastActive}</span><span className="row-actions"><button type="button" className="row-action" onClick={() => onEdit(member)}>Edit</button><button type="button" className="row-action row-action-muted" onClick={() => onToggle(member)} disabled={statusUpdatingId === member.id}>{statusUpdatingId === member.id ? 'Updating…' : member.status === 'Active' ? 'Suspend' : 'Activate'}</button></span></div>)}</div> : <div className="empty-state"><span><Icon name="search" size={20} /></span><h3>No staff accounts found</h3><p>Try a different search or status filter.</p></div>}<p className="table-foot">Showing {staff.length} of {total} staff accounts</p></section></>;
+function Accounts({ staff, total, search, setSearch, statusFilter, setStatusFilter, sortOrder, setSortOrder, onCreate, onView, onEdit, onToggle, statusUpdatingId }) {
+  return <><div className="page-heading accounts-heading"><div><h1>Staff accounts</h1></div><button className="primary-button" type="button" onClick={onCreate}><Icon name="plus" size={17} /> Create account</button></div><section className="panel accounts-panel"><div className="accounts-toolbar"><label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, role or email" aria-label="Search staff" /></label><div className="toolbar-actions"><select className="filter-button" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option>All status</option><option>Active</option><option>Pending</option><option>Suspended</option><option>Inactive</option></select><select className="filter-button" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort staff"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></div></div>{staff.length ? <div className="account-table"><div className="account-row account-head"><span>Team member</span><span>Role & department</span><span>Status</span><span>Last active</span><span /></div>{staff.map((member) => <div className="account-row account-data-row" key={member.id} role="button" tabIndex="0" aria-label={`View account details for ${member.name}`} onClick={() => onView(member)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onView(member); } }}><span className="guest-cell"><StaffAvatar member={member} /><span><strong>{member.name}</strong><small>{member.email}</small></span></span><span><strong className="role-name">{member.role}</strong><small>{member.department}</small></span><span><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></span><span className="last-active">{member.lastActive}</span><span className="row-actions" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><button type="button" className="row-action" onClick={() => onEdit(member)}>Edit</button><button type="button" className="row-action row-action-muted" onClick={() => onToggle(member)} disabled={statusUpdatingId === member.id}>{statusUpdatingId === member.id ? 'Updating…' : member.status === 'Active' ? 'Suspend' : 'Activate'}</button></span></div>)}</div> : <div className="empty-state"><span><Icon name="search" size={20} /></span><h3>No staff accounts found</h3><p>Try a different search or status filter.</p></div>}<p className="table-foot">Showing {staff.length} of {total} staff accounts</p></section></>;
 }
 
 function AccountModal({ mode, member, onClose, onSubmit }) {
+  const isView = mode === 'view';
   const nameParts = member?.name.split(' ') || ['', ''];
   const firstName = member ? nameParts.slice(0, -1).join(' ') : '';
   const lastName = member ? nameParts.at(-1) : '';
@@ -310,6 +342,13 @@ function AccountModal({ mode, member, onClose, onSubmit }) {
   const [rolesError, setRolesError] = useState('');
 
   useEffect(() => {
+    if (mode === 'view') {
+      setRoles([]);
+      setRolesLoading(false);
+      return undefined;
+    }
+
+    setRolesLoading(true);
     let active = true;
     accessApi.roles()
       .then((roleResponse) => {
@@ -329,7 +368,7 @@ function AccountModal({ mode, member, onClose, onSubmit }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     setSelectedRole(member?.roleName || '');
@@ -339,23 +378,37 @@ function AccountModal({ mode, member, onClose, onSubmit }) {
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
         <div className="modal-heading">
-          <div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{mode === 'edit' ? 'Edit staff account' : 'Create a staff account'}</h2><p>{mode === 'edit' ? 'Keep this person’s access details up to date.' : 'Set the login credentials for this team member.'}</p></div>
+          <div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{isView ? 'Staff account details' : mode === 'edit' ? 'Edit staff account' : 'Create a staff account'}</h2><p>{isView ? 'Review this person’s access and account information.' : mode === 'edit' ? 'Keep this person’s access details up to date.' : 'Set the login credentials for this team member.'}</p></div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
-        <form className="account-form" onSubmit={onSubmit} encType="multipart/form-data">
-          <div className="form-row"><label htmlFor="firstName">First name<input id="firstName" name="firstName" defaultValue={firstName} placeholder="Minh" required /></label><label htmlFor="lastName">Last name<input id="lastName" name="lastName" defaultValue={lastName} placeholder="Anh" required /></label></div>
-          <label htmlFor="email">Work email<input id="email" name="email" type="email" defaultValue={member?.email || ''} placeholder="name@aureliahotel.com" required /></label>
-          {mode === 'create' && <label htmlFor="password">Password<input id="password" name="password" type="password" minLength="8" maxLength="72" autoComplete="new-password" placeholder="At least 8 characters" required /></label>}
-          {mode === 'create' && <label htmlFor="avatar">Avatar<input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" /><small>JPEG, PNG, GIF or WebP · max 5 MB</small></label>}
-          <div className="form-row">
-            <label htmlFor="department">Department<select id="department" name="department" defaultValue={member?.department || 'Front office'}><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label>
-            <label htmlFor="role">Role<select id="role" name="role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} disabled={rolesLoading || !roles.length} required><option value="">{rolesLoading ? 'Loading roles…' : rolesError || 'Select a role'}</option>{roles.map((role) => <option value={role.name} key={role.id}>{formatRoleName(role.name)}</option>)}</select></label>
-          </div>
-          <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit" disabled={rolesLoading || !selectedRole}>{mode === 'edit' ? 'Save changes' : 'Create account'}</button></div>
-        </form>
+        {isView ? <AccountDetails member={member} onClose={onClose} /> : <form className="account-form" onSubmit={onSubmit} encType="multipart/form-data">
+            <div className="form-row"><label htmlFor="firstName">First name<input id="firstName" name="firstName" defaultValue={firstName} placeholder="Minh" required /></label><label htmlFor="lastName">Last name<input id="lastName" name="lastName" defaultValue={lastName} placeholder="Anh" required /></label></div>
+            <label htmlFor="email">Work email<input id="email" name="email" type="email" defaultValue={member?.email || ''} placeholder="name@aureliahotel.com" required /></label>
+            {mode === 'create' && <label htmlFor="password">Password<input id="password" name="password" type="password" minLength="8" maxLength="72" autoComplete="new-password" placeholder="At least 8 characters" required /></label>}
+            {mode === 'create' && <label htmlFor="avatar">Avatar<input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" /><small>JPEG, PNG, GIF or WebP · max 5 MB</small></label>}
+            <div className="form-row">
+              <label htmlFor="department">Department<select id="department" name="department" defaultValue={member?.department || 'Front office'}><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label>
+              <label htmlFor="role">Role<select id="role" name="role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} disabled={rolesLoading || !roles.length} required><option value="">{rolesLoading ? 'Loading roles…' : rolesError || 'Select a role'}</option>{roles.map((role) => <option value={role.name} key={role.id}>{formatRoleName(role.name)}</option>)}</select></label>
+            </div>
+            <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit" disabled={rolesLoading || !selectedRole}>{mode === 'edit' ? 'Save changes' : 'Create account'}</button></div>
+          </form>}
       </div>
     </div>
   );
+}
+
+function AccountDetails({ member, onClose }) {
+  const createdAt = member.createdAt ? new Date(member.createdAt).toLocaleDateString() : '—';
+  return <div className="account-details">
+    <div className="account-view-identity"><StaffAvatar member={member} /><div><strong>{member.name}</strong><span>{member.email}</span></div><span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span></div>
+    <div className="account-details-grid">
+      <div className="account-detail"><span>Role</span><strong>{member.role}</strong></div>
+      <div className="account-detail"><span>Department</span><strong>{member.department}</strong></div>
+      <div className="account-detail"><span>Last active</span><strong>{member.lastActive}</strong></div>
+      <div className="account-detail"><span>Account created</span><strong>{createdAt}</strong></div>
+    </div>
+    <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Close</button></div>
+  </div>;
 }
 
 function StatusConfirmModal({ member, isSubmitting, onClose, onConfirm }) {
