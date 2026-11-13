@@ -150,6 +150,11 @@ export function StaffStage({ user, onLogout }) {
   }, [activeTab, accountSection, navigationKey]);
 
   useEffect(() => {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [activeTab, accountSection]);
+
+  useEffect(() => {
     if (!canManageStaffAccounts) return;
     staffApi.list()
       .then((members) => setStaff(members.map(toStaffMember)))
