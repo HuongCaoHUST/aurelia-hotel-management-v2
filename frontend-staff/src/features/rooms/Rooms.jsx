@@ -195,7 +195,7 @@ function RoomModal({ roomTypes, onClose, onSubmit }) {
         <div className="form-row"><label>Room number<input name="roomNumber" placeholder="101" maxLength="20" required /></label><label>Floor<input name="floor" type="number" min="0" step="1" placeholder="1" required /></label></div>
         <label>Room type<select name="roomTypeId" defaultValue="" required><option value="" disabled>Select room type</option>{roomTypes.map((roomType) => <option value={roomType.id} key={roomType.id}>{roomType.name}</option>)}</select></label>
         <label>Status<select name="status" defaultValue="AVAILABLE"><option value="AVAILABLE">Available</option><option value="CLEANING">Cleaning</option><option value="MAINTENANCE">Maintenance</option><option value="OUT_OF_SERVICE">Out of service</option></select></label>
-        <label>Room images <span className="field-hint">Up to 10 images, 5 MB each</span><input name="images" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple /></label>
+        <label>Room images <span className="field-hint">Up to 10 images, 100 MB each</span><input name="images" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple /></label>
         <label>Notes<textarea name="notes" placeholder="Optional room notes" maxLength="500" /></label>
         <div className="form-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit">Save room</button></div>
       </form>}

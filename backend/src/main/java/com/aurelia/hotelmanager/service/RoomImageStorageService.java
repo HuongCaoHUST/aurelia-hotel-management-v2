@@ -39,7 +39,7 @@ public class RoomImageStorageService {
     @Value("${minio.bucket}")
     private String bucket;
 
-    @Value("${minio.max-file-size:5242880}")
+    @Value("${minio.room-image-max-file-size:104857600}")
     private long maxFileSize;
 
     public StoredImage upload(Room room, MultipartFile file) {
@@ -94,7 +94,7 @@ public class RoomImageStorageService {
         }
         if (file.getSize() > maxFileSize) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
-                    "Each room image must not exceed 5 MB");
+                    "Each room image must not exceed " + (maxFileSize / (1024 * 1024)) + " MB");
         }
 
         String contentType = file.getContentType() == null
