@@ -13,4 +13,8 @@ public interface AmenityGroupRepository extends JpaRepository<AmenityGroup, Long
     Optional<AmenityGroup> findByName(String name);
 
     boolean existsByName(String name);
+
+    boolean existsByNameIgnoreCase(String name);
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }

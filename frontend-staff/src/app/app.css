@@ -676,3 +676,22 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .permissions-state p { max-width: 430px; margin: 0; font-size: 13px; line-height: 1.55; }
 .permissions-state-error .permissions-state-icon { color: var(--rose); background: #f4e6e2; }
 .permissions-state-empty { margin-top: 22px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+
+/* Amenities workspace follows the permissions matrix pattern. */
+.amenity-group-list-item-is-disabled .role-list-copy strong,
+.amenity-group-list-item-is-disabled .role-list-copy small,
+.amenity-group-list-item-is-disabled .role-list-count { opacity: .58; }
+.amenities-group-heading { justify-content: space-between; }
+.amenity-permission-copy { display: flex; min-width: 0; align-items: flex-start; gap: 12px; }
+.amenity-permission-copy .amenity-icon { flex: 0 0 34px; margin-top: 2px; }
+.amenity-permission-actions { display: flex; align-items: center; gap: 12px; }
+.amenity-permission-actions .permission-switch { flex-shrink: 0; }
+.amenity-permission-actions .permission-switch:disabled { cursor: wait; opacity: .65; }
+.amenities-permissions-layout .permission-toolbar .secondary-button { flex-shrink: 0; }
+
+@media (max-width: 720px) {
+  .amenities-group-heading { align-items: center; flex-direction: row; }
+  .amenity-permission-row { align-items: flex-start; }
+  .amenity-permission-actions { flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+  .amenity-permission-actions .pill { display: none; }
+}

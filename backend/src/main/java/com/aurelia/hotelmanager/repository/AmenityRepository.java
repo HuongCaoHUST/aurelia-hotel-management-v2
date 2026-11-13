@@ -16,4 +16,10 @@ public interface AmenityRepository extends JpaRepository<Amenity, Long>, JpaSpec
     List<Amenity> findAllByGroupId(Long groupId);
 
     boolean existsByNameAndGroupId(String name, Long groupId);
+
+    boolean existsByNameIgnoreCaseAndGroupId(String name, Long groupId);
+
+    boolean existsByNameIgnoreCaseAndGroupIdAndIdNot(String name, Long groupId, Long id);
+
+    boolean existsByGroupId(Long groupId);
 }

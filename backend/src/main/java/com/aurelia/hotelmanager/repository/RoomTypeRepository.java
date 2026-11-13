@@ -15,4 +15,6 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long>, JpaSp
     boolean existsByName(String name);
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+
+    boolean existsByAmenities_Id(Long amenityId);
 }
