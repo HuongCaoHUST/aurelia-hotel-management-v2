@@ -11,11 +11,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -31,8 +33,17 @@ public class AvatarController {
     private final AvatarStorageService avatarStorageService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCOUNT_UPDATE')")
     @ResponseStatus(HttpStatus.CREATED)
     public AvatarResponse upload(@AuthenticationPrincipal UserDetails principal,
+                                 @RequestPart("file") MultipartFile file) {
+        User user = currentUser(principal);
+        return avatarStorageService.upload(user, file, "/auth/avatar");
+    }
+
+    @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCOUNT_UPDATE')")
+    public AvatarResponse update(@AuthenticationPrincipal UserDetails principal,
                                  @RequestPart("file") MultipartFile file) {
         User user = currentUser(principal);
         return avatarStorageService.upload(user, file, "/auth/avatar");
@@ -44,6 +55,7 @@ public class AvatarController {
     }
 
     @DeleteMapping
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCOUNT_UPDATE')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal UserDetails principal) {
         avatarStorageService.delete(currentUser(principal));

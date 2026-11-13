@@ -376,7 +376,7 @@ function AccountModal({ mode, member, onClose, onSubmit }) {
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
+      <div className={`account-modal ${isView ? 'account-details-modal' : ''}`} role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
         <div className="modal-heading">
           <div><p className="eyebrow">Staff portal</p><h2 id="account-modal-title">{isView ? 'Staff account details' : mode === 'edit' ? 'Edit staff account' : 'Create a staff account'}</h2><p>{isView ? 'Review this person’s access and account information.' : mode === 'edit' ? 'Keep this person’s access details up to date.' : 'Set the login credentials for this team member.'}</p></div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>

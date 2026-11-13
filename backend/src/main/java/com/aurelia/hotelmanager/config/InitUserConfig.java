@@ -61,6 +61,12 @@ public class InitUserConfig {
                             .name("Manage staff accounts")
                             .description("Manage staff accounts and access")
                             .build()));
+            Permission updateAccount = permissionRepository.findByCode("ACCOUNT_UPDATE")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("ACCOUNT_UPDATE")
+                            .name("Update account information")
+                            .description("Update your own account information")
+                            .build()));
             Permission createRole = permissionRepository.findByCode("ROLE_CREATE")
                     .orElseGet(() -> permissionRepository.save(Permission.builder()
                             .code("ROLE_CREATE")
@@ -99,6 +105,7 @@ public class InitUserConfig {
                             .build()));
             adminRole.getPermissions().add(dashboardView);
             adminRole.getPermissions().add(manageRoles);
+            adminRole.getPermissions().add(updateAccount);
             adminRole.getPermissions().add(createRole);
             adminRole.getPermissions().add(updateRole);
             adminRole.getPermissions().add(deleteRole);
