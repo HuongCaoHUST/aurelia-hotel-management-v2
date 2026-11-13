@@ -18,6 +18,7 @@ export const staffApi = {
   list: () => http.get('/auth/staff'),
   create: (data) => http.post('/auth/staff', data),
   update: (id, data) => http.put(`/auth/staff/${id}`, data),
+  delete: (id) => http.delete(`/auth/staff/${id}`),
   uploadAvatar: (id, file) => {
     const data = new FormData();
     data.set('file', file);

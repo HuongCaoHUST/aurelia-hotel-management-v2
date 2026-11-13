@@ -103,9 +103,16 @@ public class InitUserConfig {
                             .name("Manage rooms")
                             .description("View and create hotel rooms")
                             .build()));
+            Permission deleteStaffAccount = permissionRepository.findByCode("STAFF_DELETE")
+                    .orElseGet(() -> permissionRepository.save(Permission.builder()
+                            .code("STAFF_DELETE")
+                            .name("Delete staff accounts")
+                            .description("Permanently remove staff accounts")
+                            .build()));
             adminRole.getPermissions().add(dashboardView);
             adminRole.getPermissions().add(manageRoles);
             adminRole.getPermissions().add(updateAccount);
+            adminRole.getPermissions().add(deleteStaffAccount);
             adminRole.getPermissions().add(createRole);
             adminRole.getPermissions().add(updateRole);
             adminRole.getPermissions().add(deleteRole);

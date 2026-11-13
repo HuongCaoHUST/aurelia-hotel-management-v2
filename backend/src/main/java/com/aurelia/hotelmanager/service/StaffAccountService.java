@@ -88,6 +88,18 @@ public class StaffAccountService {
         return toResponse(userRepository.save(user));
     }
 
+    public void delete(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Không tìm thấy tài khoản nhân viên"));
+        if (!isManagedStaff(user)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Không thể xóa tài khoản quản trị viên");
+        }
+        avatarStorageService.delete(user);
+        userRepository.delete(user);
+    }
+
     private StaffAccountResponse toResponse(User user) {
         List<StaffAccountResponse.RoleSummaryResponse> roles = user.getRoles().stream()
                 .map(role -> new StaffAccountResponse.RoleSummaryResponse(role.getId(), role.getName()))

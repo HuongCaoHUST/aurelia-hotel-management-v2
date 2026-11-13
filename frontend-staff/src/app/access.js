@@ -1,6 +1,7 @@
 export const staffPermissions = {
   viewDashboard: 'DASHBOARD_VIEW',
   manageStaffAccounts: 'ROLE_MANAGE_ROLES',
+  deleteStaffAccounts: 'STAFF_DELETE',
   manageAmenities: 'ROLE_MANAGE_ROLES',
   manageRooms: 'ROOM_MANAGE_ROOMS',
 };

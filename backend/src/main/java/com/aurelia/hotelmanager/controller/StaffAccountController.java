@@ -64,6 +64,13 @@ public class StaffAccountController {
         return staffAccountService.update(id, request);
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') and hasAuthority('STAFF_DELETE')")
+    public void delete(@PathVariable Long id) {
+        staffAccountService.delete(id);
+    }
+
     @PostMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public AvatarResponse uploadAvatar(@PathVariable Long id,
