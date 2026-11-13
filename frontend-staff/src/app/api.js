@@ -18,6 +18,11 @@ export const staffApi = {
   list: () => http.get('/auth/staff'),
   create: (data) => http.post('/auth/staff', data),
   update: (id, data) => http.put(`/auth/staff/${id}`, data),
+  uploadAvatar: (id, file) => {
+    const data = new FormData();
+    data.set('file', file);
+    return http.post(`/auth/staff/${id}/avatar`, data);
+  },
   avatar: (id) => http.getBlob(`/auth/staff/${id}/avatar`),
 };
 export const roomTypeApi = {
