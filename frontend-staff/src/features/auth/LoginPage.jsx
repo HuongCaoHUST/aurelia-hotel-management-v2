@@ -71,7 +71,6 @@ export function LoginPage({ onLogin, Layout }) {
 
           <button className="login-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Signing in...' : 'Sign in'}
-            {!isSubmitting && <span aria-hidden="true">→</span>}
           </button>
         </form>
 

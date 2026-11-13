@@ -101,9 +101,8 @@ button { cursor: pointer; }
 .text-button:hover { color: var(--ink); text-decoration: underline; }
 .remember-row { display: flex !important; align-items: center; gap: 9px; margin: -5px 0 28px !important; color: var(--muted) !important; font-size: 12px !important; font-weight: 400 !important; }
 .remember-row input { width: 15px; height: 15px; accent-color: var(--gold); }
-.login-button { display: flex; width: 100%; height: 54px; align-items: center; justify-content: space-between; padding: 0 20px; border: 1px solid var(--gold); color: #fff; background: var(--gold); font-size: 13px; font-weight: 600; letter-spacing: .08em; transition: background .2s, border-color .2s; }
-.login-button span { font-size: 22px; font-weight: 400; line-height: 0; }
-.login-button:hover { border-color: var(--gold-dark); background: var(--gold-dark); }
+.login-button { display: flex; width: 100%; height: 54px; align-items: center; justify-content: center; padding: 0 20px; border: 1px solid var(--gold); color: #fff; background: linear-gradient(180deg, #c5a781, #9f7d58); font-size: 17px; font-weight: 700; letter-spacing: .08em; transition: filter .2s, border-color .2s; }
+.login-button:hover { border-color: var(--gold-dark); filter: brightness(.94); }
 .login-button:disabled { cursor: wait; opacity: .72; }
 .login-error { margin: -6px 0 20px; padding: 10px 12px; border: 1px solid rgba(255, 170, 160, .45); color: #ffd0c9; background: rgba(126, 33, 26, .28); font-size: 12px; line-height: 1.5; }
 .login-note { margin: 28px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
@@ -652,6 +651,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .status-confirm-summary.is-warning .status-confirm-icon { color: #a7625d; background: #f5e4e1; }
 .status-confirm-summary.is-safe .status-confirm-icon { color: var(--teal); background: #e2f0ed; }
 .status-confirm-modal .form-actions { margin-top: 22px; }
+.save-confirm-details { margin-top: 12px; }
 @media (max-width: 720px) { .delete-role-modal { padding: 24px 19px; } }
 
 @media (max-width: 1180px) {

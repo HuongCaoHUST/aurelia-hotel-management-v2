@@ -208,9 +208,8 @@ export function StaffStage({ user, onLogout }) {
     }
   }
 
-  async function updateMember(event) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  async function updateMember(formElement) {
+    const form = new FormData(formElement);
     const member = modal.member;
     const name = String(form.get('fullName') || `${form.get('firstName') || ''} ${form.get('lastName') || ''}`).trim();
     const status = String(form.get('status') || member.status).toUpperCase();
@@ -406,25 +405,49 @@ function AccountDetails({ member, onClose, onSubmit, roles, rolesLoading, rolesE
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [pendingSave, setPendingSave] = useState(null);
   const [selectedRole, setSelectedRole] = useState(member.roleName || normalizeRoleName(member.role));
   const [selectedStatus, setSelectedStatus] = useState(member.status.toUpperCase());
   const createdAt = member.createdAt ? new Date(member.createdAt).toLocaleDateString() : '—';
 
   useEffect(() => {
     setIsEditing(false);
+    setPendingSave(null);
     setSelectedRole(member.roleName || normalizeRoleName(member.role));
     setSelectedStatus(member.status.toUpperCase());
   }, [member.id, member.roleName, member.role, member.status]);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!isEditing) return;
+    const form = event.currentTarget;
+    setPendingSave({
+      form,
+      fullName: String(form.elements.fullName?.value || member.name).trim(),
+      email: String(form.elements.email?.value || member.email).trim(),
+      roleName: form.elements.role?.value || selectedRole,
+      department: form.elements.department?.value || '',
+      status: form.elements.status?.value || selectedStatus,
+    });
+  }
+
+  async function confirmSave() {
+    if (!pendingSave) return;
     setIsSaving(true);
     try {
-      const saved = await onSubmit(event);
+      const saved = await onSubmit(pendingSave.form);
+      setPendingSave(null);
       if (saved) setIsEditing(false);
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function cancelEditing() {
+    setSelectedRole(member.roleName || normalizeRoleName(member.role));
+    setSelectedStatus(member.status.toUpperCase());
+    setPendingSave(null);
+    setIsEditing(false);
   }
 
   async function handleAvatarChange(event) {
@@ -445,37 +468,58 @@ function AccountDetails({ member, onClose, onSubmit, roles, rolesLoading, rolesE
     }
   }
 
-  return <div className="account-details">
-    <form className="account-details-form" onSubmit={handleSubmit}>
-      <div className="account-view-identity">
-        <div className="account-view-avatar">
-          <StaffAvatar member={member} />
-          <label className="avatar-upload-button" htmlFor={`avatar-upload-${member.id}`}>
-            {isUploadingAvatar ? 'Updating…' : 'Update avatar'}
-            <input id={`avatar-upload-${member.id}`} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleAvatarChange} disabled={isUploadingAvatar} />
-          </label>
+  return <>
+    <div className="account-details">
+      <form className="account-details-form" onSubmit={handleSubmit}>
+        <div className="account-view-identity">
+          <div className="account-view-avatar">
+            <StaffAvatar member={member} />
+            <label className="avatar-upload-button" htmlFor={`avatar-upload-${member.id}`}>
+              {isUploadingAvatar ? 'Updating…' : 'Update avatar'}
+              <input id={`avatar-upload-${member.id}`} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleAvatarChange} disabled={isUploadingAvatar} />
+            </label>
+          </div>
+          <div className="account-view-copy">
+            {isEditing ? <>
+              <label className="account-inline-field">Full name<input name="fullName" defaultValue={member.name} required /></label>
+              <label className="account-inline-field">Work email<input name="email" type="email" defaultValue={member.email} required /></label>
+            </> : <><strong>Name: {member.name}</strong><span>Email: {member.email}</span></>}
+          </div>
+          {isEditing ? <label className="account-status-editor">Status<select name="status" value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}><option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="SUSPENDED">Suspended</option><option value="INACTIVE">Inactive</option></select></label> : <span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span>}
         </div>
-        <div className="account-view-copy">
+        <div className="account-details-grid">
           {isEditing ? <>
-            <label className="account-inline-field">Full name<input name="fullName" defaultValue={member.name} required /></label>
-            <label className="account-inline-field">Work email<input name="email" type="email" defaultValue={member.email} required /></label>
-          </> : <><strong>Name: {member.name}</strong><span>Email: {member.email}</span></>}
+            <label className="account-detail"><span>Role</span><select name="role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} disabled={rolesLoading || !roles.length} required><option value="">{rolesLoading ? 'Loading roles…' : rolesError || 'Select a role'}</option>{roles.map((role) => <option value={role.name} key={role.id}>{formatRoleName(role.name)}</option>)}</select></label>
+            <label className="account-detail"><span>Department</span><select name="department" defaultValue={member.department === '—' ? '' : member.department}><option value="">—</option><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label>
+          </> : <>
+            <div className="account-detail"><span>Role</span><strong>{member.role}</strong></div>
+            <div className="account-detail"><span>Department</span><strong>{member.department}</strong></div>
+          </>}
+          <div className="account-detail"><span>Last active</span><strong>{member.lastActive}</strong></div>
+          <div className="account-detail"><span>Account created</span><strong>{createdAt}</strong></div>
         </div>
-        {isEditing ? <label className="account-status-editor">Status<select name="status" value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}><option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="SUSPENDED">Suspended</option><option value="INACTIVE">Inactive</option></select></label> : <span className={`pill ${member.status.toLowerCase()}`}>{member.status}</span>}
+        <div className="form-actions">{isEditing ? <button key="save" className="primary-button" type="submit" disabled={isSaving || rolesLoading || !selectedRole}>{isSaving ? 'Saving…' : 'Save changes'}</button> : <button key="edit" className="primary-button" type="button" onClick={() => setIsEditing(true)}>Edit</button>}<button className="secondary-button" type="button" onClick={isEditing ? cancelEditing : onClose} disabled={isSaving || isUploadingAvatar}>{isEditing ? 'Cancel' : 'Close'}</button></div>
+      </form>
+    </div>
+    {pendingSave && <SaveConfirmModal member={member} draft={pendingSave} isSaving={isSaving} onClose={() => isSaving || setPendingSave(null)} onConfirm={confirmSave} />}
+  </>;
+}
+
+function SaveConfirmModal({ member, draft, isSaving, onClose, onConfirm }) {
+  const statusLabel = draft.status ? draft.status.charAt(0) + draft.status.slice(1).toLowerCase() : member.status;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !isSaving && onClose()}>
+    <div className="account-modal status-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="save-confirm-title" aria-describedby="save-confirm-description">
+      <div className="modal-heading">
+        <div><p className="eyebrow">Staff account</p><h2 id="save-confirm-title">Save changes to {draft.fullName}?</h2><p id="save-confirm-description">Review the updated account information before applying it.</p></div>
+        <button className="close-button" type="button" onClick={onClose} disabled={isSaving} aria-label="Close"><Icon name="close" /></button>
       </div>
-      <div className="account-details-grid">
-        {isEditing ? <>
-          <label className="account-detail"><span>Role</span><select name="role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} disabled={rolesLoading || !roles.length} required><option value="">{rolesLoading ? 'Loading roles…' : rolesError || 'Select a role'}</option>{roles.map((role) => <option value={role.name} key={role.id}>{formatRoleName(role.name)}</option>)}</select></label>
-          <label className="account-detail"><span>Department</span><select name="department" defaultValue={member.department === '—' ? '' : member.department}><option value="">—</option><option>Front office</option><option>Housekeeping</option><option>Operations</option><option>Maintenance</option></select></label>
-        </> : <>
-          <div className="account-detail"><span>Role</span><strong>{member.role}</strong></div>
-          <div className="account-detail"><span>Department</span><strong>{member.department}</strong></div>
-        </>}
-        <div className="account-detail"><span>Last active</span><strong>{member.lastActive}</strong></div>
-        <div className="account-detail"><span>Account created</span><strong>{createdAt}</strong></div>
+      <div className="status-confirm-summary is-safe"><StaffAvatar member={member} /><div className="status-confirm-identity"><strong>{draft.fullName}</strong><small>{formatRoleName(draft.roleName)}</small><span>{draft.email}</span></div><span className="status-confirm-icon"><Icon name="check" size={18} /></span></div>
+      <div className="account-details-grid save-confirm-details">
+        <div className="account-detail"><span>Department</span><strong>{draft.department || '—'}</strong></div>
+        <div className="account-detail"><span>Status</span><strong>{statusLabel}</strong></div>
       </div>
-      <div className="form-actions"><button className="secondary-button" type="button" onClick={isEditing ? () => setIsEditing(false) : onClose} disabled={isSaving || isUploadingAvatar}>{isEditing ? 'Cancel' : 'Close'}</button>{isEditing ? <button className="primary-button" type="submit" disabled={isSaving || rolesLoading || !selectedRole}>{isSaving ? 'Saving…' : 'Save changes'}</button> : <button className="primary-button" type="button" onClick={() => setIsEditing(true)}>Edit</button>}</div>
-    </form>
+      <div className="form-actions"><button className="primary-button" type="button" onClick={onConfirm} disabled={isSaving}>{isSaving ? 'Saving…' : 'Save changes'}</button><button className="secondary-button" type="button" onClick={onClose} disabled={isSaving}>Cancel</button></div>
+    </div>
   </div>;
 }
 
