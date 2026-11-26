@@ -1,0 +1,11 @@
+{
+  "name": "@aurelia/shared",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./api": "./src/api/index.js",
+    "./auth": "./src/auth/index.js"
+  }
+}

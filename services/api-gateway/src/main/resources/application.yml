@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET:defaultSecretKeyThatShouldBeAtLeast256BitsForHS256Algorithm}
+
+services:
+  auth: ${AUTH_SERVICE_URL:http://auth-service:8080}
+  booking: ${BOOKING_SERVICE_URL:http://booking-service:8080}
+  room: ${ROOM_SERVICE_URL:http://room-service:8080}
+  housekeeping: ${HOUSEKEEPING_SERVICE_URL:http://housekeeping-service:8080}
+  maintenance: ${MAINTENANCE_SERVICE_URL:http://maintenance-service:8080}
+  notification: ${NOTIFICATION_SERVICE_URL:http://notification-service:8080}
+
+management: {endpoint: {health: {probes: {enabled: true}}}, endpoints: {web: {exposure: {include: health}}}}

@@ -1,0 +1,1 @@
+{"name":"frontend-staff","private":true,"version":"0.0.1","type":"module","scripts":{"dev":"vite","build":"vite build"},"dependencies":{"@aurelia/shared":"file:../packages/shared","@vitejs/plugin-react":"latest","vite":"latest","react":"latest","react-dom":"latest"},"devDependencies":{}}

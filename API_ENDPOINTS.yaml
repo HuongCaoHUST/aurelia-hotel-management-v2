@@ -1,0 +1,1835 @@
+openapi: 3.0.0
+info:
+  title: Aurelia Hotel Management System API
+  description: Comprehensive REST API for hotel management microservices
+  version: 1.0.0
+  contact:
+    name: Aurelia Team
+  license:
+    name: Apache 2.0
+
+servers:
+  - url: http://localhost/api
+    description: Local development server
+  - url: http://api.hotel.local
+    description: Local domain server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    
+  schemas:
+    # ==================== Common Schemas ====================
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+
+    # ==================== Auth Service Schemas ====================
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Token expiration in seconds
+        user:
+          $ref: '#/components/schemas/UserResponse'
+      required:
+        - accessToken
+        - expiresIn
+        - user
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phoneNumber:
+          type: string
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phoneNumber:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleResponse'
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          enum: [ADMIN, STAFF, CUSTOMER, MANAGER, HOUSEKEEPER]
+      required:
+        - id
+        - name
+
+    # ==================== Room Service Schemas ====================
+    RoomTypeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: "Deluxe Suite"
+        description:
+          type: string
+        basePrice:
+          type: number
+          format: double
+        maxCapacity:
+          type: integer
+        amenities:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - name
+        - basePrice
+        - maxCapacity
+
+    RoomResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        roomNumber:
+          type: string
+          example: "101"
+        roomType:
+          $ref: '#/components/schemas/RoomTypeResponse'
+        floor:
+          type: integer
+        occupancyStatus:
+          type: string
+          enum: [VACANT, OCCUPIED, UNDER_MAINTENANCE, CLEANING]
+        lastCleanedAt:
+          type: string
+          format: date-time
+        images:
+          type: array
+          items:
+            type: string
+            description: Image URLs
+      required:
+        - id
+        - roomNumber
+        - roomType
+        - floor
+        - occupancyStatus
+
+    CreateRoomRequest:
+      type: object
+      properties:
+        roomNumber:
+          type: string
+        roomTypeId:
+          type: integer
+        floor:
+          type: integer
+      required:
+        - roomNumber
+        - roomTypeId
+        - floor
+
+    UpdateRoomStatusRequest:
+      type: object
+      properties:
+        occupancyStatus:
+          type: string
+          enum: [VACANT, OCCUPIED, UNDER_MAINTENANCE, CLEANING]
+      required:
+        - occupancyStatus
+
+    RoomAvailabilityRequest:
+      type: object
+      properties:
+        checkInDate:
+          type: string
+          format: date
+        checkOutDate:
+          type: string
+          format: date
+        roomTypeId:
+          type: integer
+      required:
+        - checkInDate
+        - checkOutDate
+
+    # ==================== Booking Service Schemas ====================
+    ReservationRequest:
+      type: object
+      properties:
+        guestId:
+          type: integer
+        roomIds:
+          type: array
+          items:
+            type: integer
+          description: List of room IDs to reserve
+        checkInDate:
+          type: string
+          format: date
+        checkOutDate:
+          type: string
+          format: date
+        numberOfGuests:
+          type: integer
+        specialRequests:
+          type: string
+      required:
+        - guestId
+        - roomIds
+        - checkInDate
+        - checkOutDate
+        - numberOfGuests
+
+    ReservationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        reservationNumber:
+          type: string
+        guest:
+          $ref: '#/components/schemas/GuestResponse'
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomResponse'
+        checkInDate:
+          type: string
+          format: date
+        checkOutDate:
+          type: string
+          format: date
+        numberOfNights:
+          type: integer
+        numberOfGuests:
+          type: integer
+        totalPrice:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED]
+        specialRequests:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reservationNumber
+        - guest
+        - rooms
+        - checkInDate
+        - checkOutDate
+        - status
+
+    GuestResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phoneNumber:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        documentType:
+          type: string
+        documentNumber:
+          type: string
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+
+    CheckInRequest:
+      type: object
+      properties:
+        reservationId:
+          type: integer
+      required:
+        - reservationId
+
+    CheckOutRequest:
+      type: object
+      properties:
+        reservationId:
+          type: integer
+      required:
+        - reservationId
+
+    PaymentRequest:
+      type: object
+      properties:
+        reservationId:
+          type: integer
+        amount:
+          type: number
+          format: double
+        paymentMethod:
+          type: string
+          enum: [CREDIT_CARD, DEBIT_CARD, CASH, BANK_TRANSFER]
+        notes:
+          type: string
+      required:
+        - reservationId
+        - amount
+        - paymentMethod
+
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        reservationId:
+          type: integer
+        amount:
+          type: number
+          format: double
+        paymentMethod:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+        transactionId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reservationId
+        - amount
+        - status
+
+    # ==================== Housekeeping Service Schemas ====================
+    HousekeepingTaskRequest:
+      type: object
+      properties:
+        roomId:
+          type: integer
+        taskType:
+          type: string
+          enum: [CLEANING, INSPECTION, RESTOCKING, MAINTENANCE_CHECK]
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, URGENT]
+        notes:
+          type: string
+      required:
+        - roomId
+        - taskType
+        - priority
+
+    HousekeepingTaskResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        room:
+          $ref: '#/components/schemas/RoomResponse'
+        taskType:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, CANCELLED]
+        assignedTo:
+          $ref: '#/components/schemas/UserResponse'
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - room
+        - taskType
+        - priority
+        - status
+
+    AssignTaskRequest:
+      type: object
+      properties:
+        staffId:
+          type: integer
+      required:
+        - staffId
+
+    UpdateTaskStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, CANCELLED]
+        notes:
+          type: string
+      required:
+        - status
+
+    # ==================== Maintenance Service Schemas ====================
+    MaintenanceRequestRequest:
+      type: object
+      properties:
+        roomId:
+          type: integer
+        issueDescription:
+          type: string
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, URGENT]
+        category:
+          type: string
+          example: "Electrical, Plumbing, HVAC, Furniture"
+      required:
+        - roomId
+        - issueDescription
+        - priority
+
+    MaintenanceRequestResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNumber:
+          type: string
+        room:
+          $ref: '#/components/schemas/RoomResponse'
+        issueDescription:
+          type: string
+        priority:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, IN_PROGRESS, COMPLETED, REJECTED]
+        assignedTo:
+          $ref: '#/components/schemas/UserResponse'
+        estimatedCost:
+          type: number
+          format: double
+        actualCost:
+          type: number
+          format: double
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requestNumber
+        - room
+        - issueDescription
+        - priority
+        - status
+
+    UpdateMaintenanceStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [OPEN, IN_PROGRESS, COMPLETED, REJECTED]
+        actualCost:
+          type: number
+          format: double
+        notes:
+          type: string
+      required:
+        - status
+
+    # ==================== Notification Service Schemas ====================
+    NotificationRequest:
+      type: object
+      properties:
+        userId:
+          type: integer
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+          enum: [INFO, WARNING, ERROR, SUCCESS]
+      required:
+        - userId
+        - title
+        - message
+        - type
+
+    NotificationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        user:
+          $ref: '#/components/schemas/UserResponse'
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user
+        - title
+        - message
+        - type
+        - isRead
+
+    PaginationResponse:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== AUTH SERVICE ====================
+  /auth/register:
+    post:
+      tags:
+        - Auth Service
+      summary: Register new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+
+  /auth/login:
+    post:
+      tags:
+        - Auth Service
+      summary: Login user
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth Service
+      summary: Refresh access token
+      operationId: refreshToken
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  expiresIn:
+                    type: integer
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/profile:
+    get:
+      tags:
+        - Auth Service
+      summary: Get current user profile
+      operationId: getCurrentUserProfile
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth Service
+      summary: Logout user
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== ROOM SERVICE ====================
+  /rooms:
+    get:
+      tags:
+        - Room Service
+      summary: Get all rooms with pagination & filters
+      operationId: getAllRooms
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: occupancyStatus
+          in: query
+          schema:
+            type: string
+            enum: [VACANT, OCCUPIED, UNDER_MAINTENANCE, CLEANING]
+        - name: floor
+          in: query
+          schema:
+            type: integer
+        - name: roomTypeId
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of rooms retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoomResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Room Service
+      summary: Create new room
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+      responses:
+        '201':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rooms/{roomId}:
+    get:
+      tags:
+        - Room Service
+      summary: Get room by ID
+      operationId: getRoomById
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Room retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Room Service
+      summary: Update room status
+      operationId: updateRoomStatus
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoomStatusRequest'
+      responses:
+        '200':
+          description: Room status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Room Service
+      summary: Delete room
+      operationId: deleteRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Room deleted successfully
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rooms/availability:
+    post:
+      tags:
+        - Room Service
+      summary: Check room availability
+      operationId: checkAvailability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomAvailabilityRequest'
+      responses:
+        '200':
+          description: Available rooms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalAvailable:
+                    type: integer
+                  rooms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoomResponse'
+        '400':
+          description: Invalid date range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /room-types:
+    get:
+      tags:
+        - Room Service
+      summary: Get all room types
+      operationId: getAllRoomTypes
+      responses:
+        '200':
+          description: List of room types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomTypeResponse'
+
+  # ==================== BOOKING SERVICE ====================
+  /reservations:
+    get:
+      tags:
+        - Booking Service
+      summary: Get all reservations with filters
+      operationId: getAllReservations
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED]
+        - name: guestId
+          in: query
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReservationResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Booking Service
+      summary: Create new reservation
+      operationId: createReservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '201':
+          description: Reservation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '400':
+          description: Invalid input or rooms not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservations/{reservationId}:
+    get:
+      tags:
+        - Booking Service
+      summary: Get reservation by ID
+      operationId: getReservationById
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reservation retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '404':
+          description: Reservation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Booking Service
+      summary: Update reservation
+      operationId: updateReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '200':
+          description: Reservation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '404':
+          description: Reservation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Booking Service
+      summary: Cancel reservation
+      operationId: cancelReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Reservation cancelled
+        '404':
+          description: Reservation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservations/{reservationId}/check-in:
+    post:
+      tags:
+        - Booking Service
+      summary: Check in guest
+      operationId: checkIn
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInRequest'
+      responses:
+        '200':
+          description: Guest checked in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '404':
+          description: Reservation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservations/{reservationId}/check-out:
+    post:
+      tags:
+        - Booking Service
+      summary: Check out guest
+      operationId: checkOut
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckOutRequest'
+      responses:
+        '200':
+          description: Guest checked out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '404':
+          description: Reservation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments:
+    get:
+      tags:
+        - Booking Service
+      summary: Get all payments
+      operationId: getAllPayments
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+      responses:
+        '200':
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PaymentResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Booking Service
+      summary: Process payment
+      operationId: processPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '201':
+          description: Payment processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Invalid payment data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments/{paymentId}:
+    get:
+      tags:
+        - Booking Service
+      summary: Get payment by ID
+      operationId: getPaymentById
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Payment retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '404':
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /guests:
+    get:
+      tags:
+        - Booking Service
+      summary: Get all guests
+      operationId: getAllGuests
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of guests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GuestResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+  /guests/{guestId}:
+    get:
+      tags:
+        - Booking Service
+      summary: Get guest by ID
+      operationId: getGuestById
+      parameters:
+        - name: guestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Guest retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestResponse'
+        '404':
+          description: Guest not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== HOUSEKEEPING SERVICE ====================
+  /housekeeping/tasks:
+    get:
+      tags:
+        - Housekeeping Service
+      summary: Get all housekeeping tasks
+      operationId: getAllHousekeepingTasks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, IN_PROGRESS, COMPLETED, CANCELLED]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [LOW, MEDIUM, HIGH, URGENT]
+        - name: assignedTo
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HousekeepingTaskResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Housekeeping Service
+      summary: Create new housekeeping task
+      operationId: createHousekeepingTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HousekeepingTaskRequest'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousekeepingTaskResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /housekeeping/tasks/{taskId}:
+    get:
+      tags:
+        - Housekeeping Service
+      summary: Get task by ID
+      operationId: getHousekeepingTaskById
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousekeepingTaskResponse'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Housekeeping Service
+      summary: Update task status
+      operationId: updateHousekeepingTaskStatus
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskStatusRequest'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousekeepingTaskResponse'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Housekeeping Service
+      summary: Delete task
+      operationId: deleteHousekeepingTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Task deleted
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /housekeeping/tasks/{taskId}/assign:
+    post:
+      tags:
+        - Housekeeping Service
+      summary: Assign task to staff member
+      operationId: assignHousekeepingTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignTaskRequest'
+      responses:
+        '200':
+          description: Task assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousekeepingTaskResponse'
+        '404':
+          description: Task or staff not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== MAINTENANCE SERVICE ====================
+  /maintenance/requests:
+    get:
+      tags:
+        - Maintenance Service
+      summary: Get all maintenance requests
+      operationId: getAllMaintenanceRequests
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, IN_PROGRESS, COMPLETED, REJECTED]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [LOW, MEDIUM, HIGH, URGENT]
+      responses:
+        '200':
+          description: List of maintenance requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MaintenanceRequestResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Maintenance Service
+      summary: Create new maintenance request
+      operationId: createMaintenanceRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceRequestRequest'
+      responses:
+        '201':
+          description: Maintenance request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequestResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /maintenance/requests/{requestId}:
+    get:
+      tags:
+        - Maintenance Service
+      summary: Get maintenance request by ID
+      operationId: getMaintenanceRequestById
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Maintenance request retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequestResponse'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Maintenance Service
+      summary: Update maintenance request status
+      operationId: updateMaintenanceRequestStatus
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMaintenanceStatusRequest'
+      responses:
+        '200':
+          description: Request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequestResponse'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Maintenance Service
+      summary: Delete maintenance request
+      operationId: deleteMaintenanceRequest
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Request deleted
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== NOTIFICATION SERVICE ====================
+  /notifications:
+    get:
+      tags:
+        - Notification Service
+      summary: Get all notifications for current user
+      operationId: getAllNotifications
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: isRead
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Notification Service
+      summary: Send notification
+      operationId: sendNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+      responses:
+        '201':
+          description: Notification sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/{notificationId}:
+    get:
+      tags:
+        - Notification Service
+      summary: Get notification by ID
+      operationId: getNotificationById
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Notification retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Notification Service
+      summary: Delete notification
+      operationId: deleteNotification
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Notification deleted
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/{notificationId}/read:
+    patch:
+      tags:
+        - Notification Service
+      summary: Mark notification as read
+      operationId: markNotificationAsRead
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/mark-all-read:
+    patch:
+      tags:
+        - Notification Service
+      summary: Mark all notifications as read
+      operationId: markAllNotificationsAsRead
+      responses:
+        '200':
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updatedCount:
+                    type: integer
+
+  # ==================== HEALTH CHECKS ====================
+  /health:
+    get:
+      tags:
+        - Health
+      summary: API Gateway health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [UP, DOWN]
+      security: []
+
+  /health/services:
+    get:
+      tags:
+        - Health
+      summary: All services health status
+      operationId: getServicesHealthStatus
+      responses:
+        '200':
+          description: Health status of all services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  services:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+      security: []

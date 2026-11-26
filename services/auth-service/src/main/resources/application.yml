@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: auth-service
+  
+  datasource:
+    url: jdbc:mysql://mysql:3306/auth_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: auth_user
+    password: ${AUTH_DB_PASSWORD:local_auth_1e4d634485f644f0}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+  redis:
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+jwt:
+  secret: ${JWT_SECRET:defaultSecretKeyThatShouldBeAtLeast256BitsForHS256Algorithm}
+  expiration: 3600000  # 1 hour in milliseconds
+
+logging:
+  level:
+    root: INFO
+    com.aurelia: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
